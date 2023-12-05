@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  db:
+    image:  mysql:latest
+    ports:
+      - "10866:10866"
+    environment:
+      MYSQLPASSWORD: password
+      MYSQLDATABASE: blog
