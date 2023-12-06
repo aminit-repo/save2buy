@@ -28,17 +28,13 @@ public class VerificationToken {
 
     private Date expiryDate;
 
-    public VerificationToken(String token, User user) {
+    public VerificationToken(String token, User user, Date date) {
         this.token = token;
         this.user = user;
+        this.expiryDate= date;
     }
 
-    private Date calculateExpiryDate(int expiryTimeInMinutes) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(new Timestamp(cal.getTime().getTime()));
-        cal.add(Calendar.MINUTE, expiryTimeInMinutes);
-        return new Date(cal.getTime().getTime());
-    }
+
 
     // standard constructors, getters and setters
 

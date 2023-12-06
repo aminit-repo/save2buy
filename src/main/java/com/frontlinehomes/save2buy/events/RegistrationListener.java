@@ -33,10 +33,10 @@ public class RegistrationListener implements
         verificationTokenService.createVerificationToken(user, token);
 
         String confirmationUrl
-                = event.getAppUrl() + "/regitrationConfirm/" + token;
+                = event.getAppUrl()  + token;
 
-
-        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl, user.getEmail(),"","Registration Confirmation");
+        //user.getEmail()
+        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,"save2buy.ng@gmail.com" ,"mailtrap@save2buy.ng","Save2buy Registration Confirmation");
         try{
             emailService.sendEmail(verifyEmail);
         }catch (Exception e){

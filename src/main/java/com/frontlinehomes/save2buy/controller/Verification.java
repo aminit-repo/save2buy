@@ -7,46 +7,45 @@ import com.frontlinehomes.save2buy.service.VerificationTokenService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Calendar;
 import java.util.Locale;
 @CrossOrigin
 @Controller
-@RequestMapping("/regitrationConfirm")
+@RequestMapping("/registrationConfirm")
 public class Verification {
     @Autowired
     private VerificationTokenService verificationTokenService;
 
     @Autowired
     private UserService userService;
-    @GetMapping("/{token}")
-    public String confirmRegistration(HttpServletResponse response, @PathVariable String token) {
+    @PostMapping("/{token}")
+    public ResponseEntity<String> confirmRegistration(HttpServletResponse response, @PathVariable String token) {
 
         VerificationToken verificationToken = verificationTokenService.getVerificationToken(token);
 
         if (verificationToken == null) {
             //redirect:/badUser.html
-            return "redirect:http://save2buy.ng/check?entity=0";
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
 
         User user = verificationToken.getUser();
         Calendar cal = Calendar.getInstance();
         if ((verificationToken.getExpiryDate().getTime() - cal.getTime().getTime()) <= 0) {
-            return "redirect:http://save2buy.ng/expired?entity="+user.getId();
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
 
         user.setEnabled(true);
         userService.saveUser(user);
-
-        return "redirect:http://save2buy.ng/check?entity="+user.getId();
+        return new ResponseEntity<String>("email verified",HttpStatus.OK);
 
     }
 

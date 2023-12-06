@@ -11,8 +11,7 @@ import java.util.Date;
 
 @Repository
 public interface VerificationTokenRepository extends JpaRepository<VerificationToken, Long> {
-
-
+   @Query("select e from VerificationToken e where e.token=:token")
    public VerificationToken findByToken(String token);
 
    public VerificationToken findByUser(User user);

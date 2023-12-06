@@ -42,7 +42,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                .authorizeHttpRequests((authorize) -> authorize.requestMatchers("/images/**","user/login","/regitrationConfirm/**", "/investor/create").permitAll()
+                .authorizeHttpRequests((authorize) -> authorize.requestMatchers("/images/**","user/login","/registrationConfirm/**", "/investor/create").permitAll()
                         .requestMatchers("/land/create").access(hasScope("create-land")).requestMatchers("/admin/create").access(hasScope("create-admin")).anyRequest().authenticated()
                 ).cors(httpSecurityCorsConfigurer -> { httpSecurityCorsConfigurer.disable();}).csrf(httpSecurityCsrfConfigurer -> {httpSecurityCsrfConfigurer.disable(); })
                 .sessionManagement(session-> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

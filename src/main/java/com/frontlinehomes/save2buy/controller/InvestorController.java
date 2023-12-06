@@ -58,7 +58,7 @@ public class InvestorController {
                     signUpDTO.setConfirmPassword(null);
                     String appUrl = request.getContextPath();
                     //public event
-                   // eventPublisher.publishEvent(new OnRegistrationCompleteEvent(user1, appUrl));
+                     eventPublisher.publishEvent(new OnRegistrationCompleteEvent(user1, "http:save2buy.ng/page-confirm-mail/"));
                     log.info("InvestorController:createInvestor : investor created with email "+user1.getEmail());
                     SignUpDTO signUpDTO1=convertUserToSigUpDTO(user1);
                     signUpDTO1.setPassword(null);
