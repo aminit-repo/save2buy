@@ -5,6 +5,7 @@ import com.frontlinehomes.save2buy.data.users.*;
 import com.frontlinehomes.save2buy.data.users.request.LoginDTO;
 import com.frontlinehomes.save2buy.data.users.request.SignUpDTO;
 import com.frontlinehomes.save2buy.data.users.request.UserDTO;
+import com.frontlinehomes.save2buy.data.users.response.LoginResponseDTO;
 import com.frontlinehomes.save2buy.data.verification.VerificationToken;
 import com.frontlinehomes.save2buy.events.OnRegistrationCompleteEvent;
 import com.frontlinehomes.save2buy.exception.EntityDuplicationException;
@@ -15,25 +16,26 @@ import com.frontlinehomes.save2buy.service.UserService;
 import com.frontlinehomes.save2buy.service.VerificationTokenService;
 import com.frontlinehomes.save2buy.service.mail.EmailService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.antlr.v4.runtime.misc.MultiMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.tomcat.util.http.parser.Authorization;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Calendar;
-import java.util.List;
-import java.util.Locale;
-import java.util.NoSuchElementException;
-@CrossOrigin
+import java.util.*;
+
 @RestController
 @RequestMapping("/user")
 public class UserController {
@@ -47,16 +49,16 @@ public class UserController {
     @Autowired
     private JWTService jwtService;
 
-
+    @CrossOrigin
     @PostMapping("/login")
     public ResponseEntity<String> signin(@RequestBody LoginDTO loginDTO){
         Authentication authentication= authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO
                 .getPassword()));
-        // log.info("UserController:signin  success signin user "+loginDTO.getEmail());
-        return  ResponseEntity.ok().header("Authorization",jwtService.getJWTString(authentication)).build();
+        //get the specified user details
+        return  ResponseEntity.ok(jwtService.getJWTString(authentication));
     }
 
-
+    @CrossOrigin( allowedHeaders = {"Authorization"})
     @GetMapping("/{id}")
     public ResponseEntity<User> getUser(@PathVariable Long id){
         try{
@@ -66,6 +68,7 @@ public class UserController {
         }
     }
 
+    @CrossOrigin( allowedHeaders = {"Authorization"})
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers(){
         return new ResponseEntity<List<User>>(userService.getAllUser(), HttpStatus.OK);
@@ -98,6 +101,13 @@ public class UserController {
         BeanUtils.copyProperties(signUpDTO, user);
         return user;
     }
+
+    private LoginResponseDTO convertUserTOLoginResponseDTO(User user){
+        LoginResponseDTO loginResponseDTO= new LoginResponseDTO();
+        BeanUtils.copyProperties(user, loginResponseDTO);
+        return loginResponseDTO;
+    }
+
 
     public SignUpDTO convertUserToSigUpDTO(User user){
         SignUpDTO signUpDTO= new SignUpDTO();

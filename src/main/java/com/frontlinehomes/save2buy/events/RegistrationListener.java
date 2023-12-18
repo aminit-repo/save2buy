@@ -1,13 +1,17 @@
 package com.frontlinehomes.save2buy.events;
 
 
+import com.frontlinehomes.save2buy.controller.InvestorController;
 import com.frontlinehomes.save2buy.data.email.VerifyEmail;
 import com.frontlinehomes.save2buy.data.users.User;
 import com.frontlinehomes.save2buy.service.VerificationTokenService;
 import com.frontlinehomes.save2buy.service.mail.EmailService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
+
 
 import java.util.UUID;
 
@@ -20,6 +24,9 @@ public class RegistrationListener implements
 
     @Autowired
     private VerificationTokenService verificationTokenService;
+
+    private static Logger log = LogManager.getLogger( RegistrationListener.class);
+
 
     @Override
     public void onApplicationEvent(OnRegistrationCompleteEvent event) {
@@ -36,12 +43,14 @@ public class RegistrationListener implements
                 = event.getAppUrl()  + token;
 
         //user.getEmail()
-        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,"save2buy.ng@gmail.com" ,"mailtrap@save2buy.ng","Save2buy Registration Confirmation");
+        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,user.getEmail() ,"no-reply@save2buy.ng","Save2buy Registration Confirmation");
+
         try{
             emailService.sendEmail(verifyEmail);
+            log.info("RegistrationListener:confirmRegistration email sent successfully to "+user.getEmail());
         }catch (Exception e){
             //log the error message
-            System.out.println(e.getMessage());
+            log.error("RegistrationListener:confirmRegistration "+e.getMessage());
         }
 
     }

@@ -50,4 +50,12 @@ public class UserService {
         return userRepository.findAll();
     }
 
+    public User getUserByEmail(String email){
+        try{
+            return  userRepository.findByEmail(email);
+        }catch (NoSuchElementException e){
+             throw e;
+        }
+    }
+
 }

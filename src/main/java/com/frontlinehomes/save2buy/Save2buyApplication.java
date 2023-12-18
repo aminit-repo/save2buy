@@ -14,6 +14,4 @@ public class Save2buyApplication {
 		SpringApplication.run(Save2buyApplication.class, args);
 	}
 
-
-
 }

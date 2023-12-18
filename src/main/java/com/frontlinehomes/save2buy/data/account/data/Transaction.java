@@ -1,10 +1,7 @@
 package com.frontlinehomes.save2buy.data.account.data;
 
 import com.frontlinehomes.save2buy.data.land.data.InvestorLand;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,6 +31,12 @@ public class Transaction implements Serializable {
     private Double amount;
 
     private String refNumber;
+
+    private String transactionId;
+
+    private String paymentMethod;
+    @Enumerated(EnumType.STRING)
+    private BillingType billingType;
 
 
 }

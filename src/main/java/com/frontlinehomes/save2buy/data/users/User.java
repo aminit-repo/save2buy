@@ -28,7 +28,6 @@ public class User{
     private String otherName;
     @Column(nullable = false)
     private String password;
-
     @NaturalId
     @Column(nullable = false)
     private String email;

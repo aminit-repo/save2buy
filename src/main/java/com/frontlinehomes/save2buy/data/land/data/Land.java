@@ -10,8 +10,7 @@ import org.hibernate.type.YesNoConverter;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @NoArgsConstructor
@@ -36,7 +35,9 @@ public class Land implements Serializable {
 
     private String location;
     private String neigborhood;
-
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "land")
+    @Setter(AccessLevel.NONE)
+    private LandCalculatorConfig calculatorConfig;
     private String img1Url;
     private String img2Url;
     @Convert(converter = YesNoConverter.class)
@@ -52,11 +53,39 @@ public class Land implements Serializable {
     private String latitude;
 
     @OneToMany(mappedBy = "land", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Setter(AccessLevel.NONE)
     private Set<LandPaymentPlan> landPaymentPlans;
+
+    @OneToMany(mappedBy = "land", cascade = {CascadeType.PERSIST,  CascadeType.REMOVE}, orphanRemoval = true)
+    private List<InvestorLand> investorLands;
+
+    public void addInvestorLand(InvestorLand investorLand){
+        if(this.investorLands== null){
+            this.investorLands= new ArrayList<>();
+        }
+        this.investorLands.add(investorLand);
+        investorLand.setLand(this);
+    }
+
+    public void removeInvestorLand(InvestorLand investorLand){
+        this.investorLands.remove(investorLand);
+        investorLand.setLand(null);
+    }
+
+    private void addCalculatorConfig(LandCalculatorConfig calculatorConfig){
+        this.calculatorConfig= calculatorConfig;
+        calculatorConfig.setLand(this);
+    }
+
+    private void removeCalculatorConfig(LandCalculatorConfig landCalculatorConfig){
+        landCalculatorConfig.setLand(null);
+        this.calculatorConfig= null;
+    }
 
 
     public  void addLandPaymentPlan(LandPaymentPlan landPaymentPlan){
+        if(this.landPaymentPlans == null){
+            this.landPaymentPlans= new HashSet<>();
+        }
         landPaymentPlan.setLand(this);
         this.landPaymentPlans.add(landPaymentPlan);
     }

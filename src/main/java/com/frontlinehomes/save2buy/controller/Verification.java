@@ -17,8 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Calendar;
 import java.util.Locale;
-@CrossOrigin
-@Controller
+
+@RestController
 @RequestMapping("/registrationConfirm")
 public class Verification {
     @Autowired

@@ -41,4 +41,8 @@ public class EmailService {
         return stringWriter.getBuffer().toString();
     }
 
+    public void sendApiMail(EmailDetails emailDetails){
+
+    }
+
 }

@@ -10,17 +10,17 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @Entity
+@NoArgsConstructor
 @Setter
 @Getter
-@NoArgsConstructor
-public class LandPaymentPlan implements Serializable {
+@AllArgsConstructor
+public class InvestorLandPaymentPlan implements Serializable {
     @Id
     @GeneratedValue
     @Setter(AccessLevel.NONE)
     private Long id;
-
     @ManyToOne
-    private Land land;
+    private InvestorLand investorLand;
     @ManyToOne
     private PaymentPlan paymentPlan;
 
@@ -28,12 +28,12 @@ public class LandPaymentPlan implements Serializable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        LandPaymentPlan that = (LandPaymentPlan) o;
-        return land.equals(that.land) && paymentPlan.equals(that.paymentPlan);
+        InvestorLandPaymentPlan that = (InvestorLandPaymentPlan) o;
+        return investorLand.equals(that.investorLand) && paymentPlan.equals(that.paymentPlan);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(land, paymentPlan);
+        return Objects.hash(investorLand, paymentPlan);
     }
 }

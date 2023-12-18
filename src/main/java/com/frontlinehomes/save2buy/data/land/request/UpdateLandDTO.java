@@ -15,8 +15,10 @@ public class UpdateLandDTO {
     private String neigborhood;
     private Boolean isSoldOut;
     private String description;
-    private byte[] image1;
-    private byte[] image2;
+
+    private String img1Url;
+    private String img2Url;
+
     private String longitude;
     private String latitude;
 

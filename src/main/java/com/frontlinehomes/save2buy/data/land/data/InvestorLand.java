@@ -12,6 +12,7 @@ import org.hibernate.annotations.CurrentTimestamp;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -39,9 +40,11 @@ public class InvestorLand implements Serializable {
     @CurrentTimestamp
     private Timestamp creationDate;
 
-    @OneToOne(mappedBy = "investorLand")
+    @OneToMany(mappedBy = "investorLand", cascade = {CascadeType.ALL})
     @Setter(AccessLevel.NONE)
-    private PaymentPlan paymentPlan;
+    private List<InvestorLandPaymentPlan> investorLandPaymentPlan;
+            ;
+
     @OneToMany(mappedBy = "investorLand", cascade = {CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     private List<Transaction> transactionList;
 
@@ -56,14 +59,17 @@ public class InvestorLand implements Serializable {
     }
 
 
-    public void addPaymentPlan(PaymentPlan paymentPlan){
-        paymentPlan.setInvestorLand(this);
-        this.paymentPlan= paymentPlan;
+    public void addInvestorLandPaymentPlan(InvestorLandPaymentPlan investorLandPaymentPlan){
+        if(this.investorLandPaymentPlan== null){
+            this.investorLandPaymentPlan= new ArrayList<>();
+        }
+        investorLandPaymentPlan.setInvestorLand(this);
+        this.investorLandPaymentPlan.add(investorLandPaymentPlan);
     }
 
-    public  void removePaymentPlan(PaymentPlan paymentPlan){
-        this.paymentPlan= null;
-        paymentPlan.setInvestorLand(null);
+    public  void removeInvestorLandPaymentPlan(InvestorLandPaymentPlan investorLandPaymentPlan){
+        this.investorLandPaymentPlan.remove(investorLandPaymentPlan);
+        investorLandPaymentPlan.setInvestorLand(null);
     }
 
 
@@ -73,12 +79,12 @@ public class InvestorLand implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         InvestorLand that = (InvestorLand) o;
-        return land.equals(that.land) && investor.equals(that.investor) && size.equals(that.size) && amount.equals(that.amount) && paymentPlan.equals(that.paymentPlan);
+        return land.equals(that.land) && investor.equals(that.investor) && size.equals(that.size) && amount.equals(that.amount) && investorLandPaymentPlan.equals(that.investorLandPaymentPlan);
     }
 
 
     @Override
     public int hashCode() {
-        return Objects.hash(land, investor, size, amount, paymentPlan);
+        return Objects.hash(land, investor, size, amount, investorLandPaymentPlan);
     }
 }

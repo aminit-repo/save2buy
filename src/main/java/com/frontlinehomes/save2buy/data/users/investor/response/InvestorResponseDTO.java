@@ -1,20 +1,15 @@
-package com.frontlinehomes.save2buy.data.users.investor.request;
+package com.frontlinehomes.save2buy.data.users.investor.response;
 
 import com.frontlinehomes.save2buy.data.users.Gender;
 import com.frontlinehomes.save2buy.data.users.Phone;
-import com.frontlinehomes.save2buy.data.users.User;
-import com.frontlinehomes.save2buy.data.users.request.UserDTO;
-import jakarta.persistence.*;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.NaturalId;
 
 import java.util.List;
-
 @Setter
 @Getter
-public class InvestorDTO {
+public class InvestorResponseDTO {
+    private Long id;
 
     private String address;
 
@@ -48,5 +43,4 @@ public class InvestorDTO {
     private Gender gender;
 
     private String purposeOfAccount;
-
 }

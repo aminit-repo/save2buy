@@ -41,7 +41,7 @@ public class DefaultAuthenticationProvider implements AuthenticationProvider {
         User user = userRepository.findByEmail(username);
         if(user!= null){
             String[] splited;
-            if(user.getAdmin()!=null){
+            if(user.getAdmin()==null){
                 //this is an Investor
                 splited = userAccessScopeConfig.getUser().split(" ");
             }else{

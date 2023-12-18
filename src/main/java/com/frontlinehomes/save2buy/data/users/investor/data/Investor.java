@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -43,8 +44,9 @@ public class Investor  implements Serializable {
     private  String nextOfKinPhone;
     private String nextOfKinAddress;
     private String nextOfKinRelationship;
-    @OneToMany(mappedBy = "investor", cascade = {CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
-    private List<InvestorLand> investorLands;
+    private String purposeOfAccount;
+    @OneToMany(mappedBy = "investor", cascade = {CascadeType.ALL}, orphanRemoval = true)
+    private List<InvestorLand> investorLands= new ArrayList<>();
 
     public void addAccount(Account account){
         this.account= account;

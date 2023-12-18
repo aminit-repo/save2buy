@@ -24,10 +24,18 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+
+import java.lang.reflect.Array;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
+import java.util.List;
 
+import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.oauth2.core.authorization.OAuth2AuthorizationManagers.hasScope;
 
 @Configuration
@@ -40,17 +48,30 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http
                 .authorizeHttpRequests((authorize) -> authorize.requestMatchers("/images/**","user/login","/registrationConfirm/**", "/investor/create").permitAll()
                         .requestMatchers("/land/create").access(hasScope("create-land")).requestMatchers("/admin/create").access(hasScope("create-admin")).anyRequest().authenticated()
-                ).cors(httpSecurityCorsConfigurer -> { httpSecurityCorsConfigurer.disable();}).csrf(httpSecurityCsrfConfigurer -> {httpSecurityCsrfConfigurer.disable(); })
+                ).csrf(httpSecurityCsrfConfigurer -> {httpSecurityCsrfConfigurer.disable(); })
                 .sessionManagement(session-> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2ResourceServer((oauth2) -> oauth2
-                        .jwt(Customizer.withDefaults())
+                        .jwt(withDefaults())
                 );
         return http.build();
     }
+   /* @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        //configuration.validateAllowCredentials();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+       // configuration.setAllowedOriginPatterns(Arrays.asList("http://**", "https://**", "*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH"));
+        //configuration.setAllowedHeaders(List.of("Authorization"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    } */
+
 
     @Bean
     public JwtDecoder jwtDecoder() {
@@ -70,6 +91,10 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager() throws Exception {
         return  new ProviderManager(authenticationProvider);
     }
+
+
+
+
 
 
 

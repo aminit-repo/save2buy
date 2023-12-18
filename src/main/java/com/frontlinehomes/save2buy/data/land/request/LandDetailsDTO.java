@@ -1,6 +1,8 @@
 package com.frontlinehomes.save2buy.data.land.request;
 
 import com.frontlinehomes.save2buy.data.land.data.LandPaymentPlan;
+import com.frontlinehomes.save2buy.data.land.response.CalculatorConfigDTO;
+import com.frontlinehomes.save2buy.data.land.response.PaymentPlanResponseDTO;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -20,6 +22,7 @@ public class LandDetailsDTO {
     private String neigborhood;
     private Timestamp createdDate;
     private Boolean isSoldOut;
+    private Set<CalculatorConfigDTO> calculatorConfig;
 
     private Boolean isArchived;
     private String description;
@@ -27,6 +30,6 @@ public class LandDetailsDTO {
     private String img2Url;
     private String longitude;
     private String latitude;
-    private Set<LandPaymentPlan> landPaymentPlans;
+    private Set<PaymentPlanResponseDTO> landPaymentPlans;
 
 }

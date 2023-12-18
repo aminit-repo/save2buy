@@ -18,7 +18,8 @@ public class AddLandDTO {
     @NonNull
     private Double priceInSqm;
     private Double availableSize;
-
+    private String img1Url;
+    private String img2Url;
     @NonNull
     private Double size;
     @NonNull

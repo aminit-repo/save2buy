@@ -3,9 +3,13 @@ package com.frontlinehomes.save2buy.service.land;
 import com.frontlinehomes.save2buy.data.land.data.Land;
 import com.frontlinehomes.save2buy.data.users.User;
 import com.frontlinehomes.save2buy.repository.LandRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import java.util.List;
+
+import javax.swing.text.html.Option;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -29,6 +33,11 @@ public class LandService {
 
     public void deleteLand(Land land){
          landRepository.delete(land);
+    }
+
+    public List<Land> getAllLand(){
+        List<Land> lands= landRepository.findAll();
+        return lands;
     }
 
 
