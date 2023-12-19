@@ -20,7 +20,7 @@ import java.util.ArrayList;
 public class ElasticMailClient {
 
 
-    @Value("emailService.apiKey")
+    @Value("${emailService.apiKey}")
     private String apiKey;
 
     private WebClient webClient;
@@ -70,6 +70,7 @@ public class ElasticMailClient {
         ElasticTransactionEmail elasticTransactionEmail= new ElasticTransactionEmail();
         elasticTransactionEmail.setContent(elasticContent);
         elasticTransactionEmail.setRecipients(elasticRecipient);
+        log.info(apiKey);
 
 
 
