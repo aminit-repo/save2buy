@@ -71,14 +71,6 @@ public class ElasticMailClient {
         elasticTransactionEmail.setContent(elasticContent);
         elasticTransactionEmail.setRecipients(elasticRecipient);
 
-        String json;
-        try{
-           json= mapper.writeValueAsString(elasticTransactionEmail);
-            log.info(json);
-        }catch (Exception e){
-            log.error("ElasticMailClient: sendTransactionEmail: "+e.getMessage());
-        }
-
 
 
 
