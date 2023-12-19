@@ -10,4 +10,5 @@ public class EmailDetails {
     protected String  subject;
     protected String to;
     protected String from;
+    protected String envelopeFrom;
 }

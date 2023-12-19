@@ -1,11 +1,12 @@
 package com.frontlinehomes.save2buy.events;
 
 
-import com.frontlinehomes.save2buy.controller.InvestorController;
+import com.frontlinehomes.save2buy.client.elasticMail.ElasticMailClient;
+
 import com.frontlinehomes.save2buy.data.email.VerifyEmail;
 import com.frontlinehomes.save2buy.data.users.User;
 import com.frontlinehomes.save2buy.service.VerificationTokenService;
-import com.frontlinehomes.save2buy.service.mail.EmailService;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +20,14 @@ import java.util.UUID;
 public class RegistrationListener implements
         ApplicationListener<OnRegistrationCompleteEvent> {
 
-    @Autowired
+    //smtp email service
+   /* @Autowired
     private EmailService emailService;
+    */
+
+    //elastic mail sender
+    @Autowired
+    private ElasticMailClient elasticMailClient;
 
     @Autowired
     private VerificationTokenService verificationTokenService;
@@ -43,10 +50,10 @@ public class RegistrationListener implements
                 = event.getAppUrl()  + token;
 
         //user.getEmail()
-        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,user.getEmail() ,"no-reply@save2buy.ng","Save2buy Registration Confirmation");
-
+        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,user.getEmail() ,"no-reply <no-reply@save2buy.ng>","Save2buy Email Verification", "no-reply <no-reply@save2buy.ng>","email-verification");
+        verifyEmail.setName(user.getFirstName()!=null? user.getFirstName(): " ");
         try{
-            emailService.sendEmail(verifyEmail);
+            elasticMailClient.sendTransactionEmail(verifyEmail);
             log.info("RegistrationListener:confirmRegistration email sent successfully to "+user.getEmail());
         }catch (Exception e){
             //log the error message
