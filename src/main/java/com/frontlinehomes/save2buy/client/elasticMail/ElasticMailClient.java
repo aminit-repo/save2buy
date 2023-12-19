@@ -52,7 +52,7 @@ public class ElasticMailClient {
 
 
             //create merge
-            ElasticMerge elasticMerge= new ElasticMerge(((VerifyEmail) emailDetails).getName(), ((VerifyEmail) emailDetails).getUrl());
+            ElasticMerge elasticMerge= new ElasticMerge(((VerifyEmail) emailDetails).getUrl());
             
 
 

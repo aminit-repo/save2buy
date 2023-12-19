@@ -11,9 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ElasticMerge {
-   @JsonProperty("Recipient")
-   public String Recipient;
-   @JsonProperty("Consent")
-   public String Consent;
+   @JsonProperty("Verify")
+   public String Verify;
 
 }
