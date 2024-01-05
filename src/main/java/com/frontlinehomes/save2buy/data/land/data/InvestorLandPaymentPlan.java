@@ -1,9 +1,6 @@
 package com.frontlinehomes.save2buy.data.land.data;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
@@ -23,6 +20,8 @@ public class InvestorLandPaymentPlan implements Serializable {
     private InvestorLand investorLand;
     @ManyToOne
     private PaymentPlan paymentPlan;
+    @Enumerated(EnumType.STRING)
+    private PaymentPlanStatus status;
 
     @Override
     public boolean equals(Object o) {

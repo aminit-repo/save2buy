@@ -1,4 +1,4 @@
-package com.frontlinehomes.save2buy.events;
+package com.frontlinehomes.save2buy.events.registration;
 
 
 import com.frontlinehomes.save2buy.data.users.User;

@@ -1,34 +1,37 @@
 package com.frontlinehomes.save2buy.controller;
 
-import com.frontlinehomes.save2buy.data.land.data.Duration;
-import com.frontlinehomes.save2buy.data.land.data.Land;
-import com.frontlinehomes.save2buy.data.land.data.LandPaymentPlan;
-import com.frontlinehomes.save2buy.data.land.data.PaymentPlan;
+import com.frontlinehomes.save2buy.data.ResponseDTO;
+import com.frontlinehomes.save2buy.data.ResponseStatus;
+import com.frontlinehomes.save2buy.data.land.data.*;
+import com.frontlinehomes.save2buy.data.land.request.CalculatorConfigDTO;
+import com.frontlinehomes.save2buy.data.land.request.DurationDTO;
 import com.frontlinehomes.save2buy.data.land.request.PaymentPlanDTO;
+import com.frontlinehomes.save2buy.data.land.request.PeriodDTO;
+import com.frontlinehomes.save2buy.data.land.response.DurationResponseDTO;
 import com.frontlinehomes.save2buy.data.land.response.PaymentPlanResponseDTO;
+import com.frontlinehomes.save2buy.exception.EntityDuplicationException;
+import com.frontlinehomes.save2buy.exception.NotNullFieldException;
 import com.frontlinehomes.save2buy.service.land.LandService;
 import com.frontlinehomes.save2buy.service.landPaymentPlan.LandPaymentPlanService;
 import com.frontlinehomes.save2buy.service.paymentUtil.PaymentUtilService;
+import com.frontlinehomes.save2buy.service.utils.DTOUtility;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.mapping.List;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.awt.*;
-import java.io.Console;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.stream.Stream;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
-@RequestMapping("/paymentPlan")
+@RequestMapping("/payment-plan")
 public class LandPaymentPlanController {
     @Autowired
     private LandService landService;
@@ -56,20 +59,21 @@ public class LandPaymentPlanController {
     public ResponseEntity<PaymentPlanResponseDTO> createLandPaymentPlan(@RequestBody PaymentPlanDTO paymentPlanDTO, @PathVariable Long id){
         try{
 
-            if(paymentPlanDTO.getDurationLength()==  null  || paymentPlanDTO.getDurationType()== null ){
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "duration field is empty");
-            }
+            if(paymentPlanDTO.getDurationLength()==  null ) throw new NotNullFieldException("missing required field durationLength ");
+
+            if(paymentPlanDTO.getDurationType()== null) throw new NotNullFieldException("missing required field durationType ");
+
             Land land= landService.getLand(id);
 
             if(land!= null){
                 Boolean durationFound= false;
-                PaymentPlan paymentPlan = convertPaymentPlanDTOtoPaymentPlan(paymentPlanDTO);
+                PaymentPlan paymentPlan = DTOUtility.convertPaymentPlanDTOtoPaymentPlan(paymentPlanDTO);
                 //check if the durationLength is set and durationType is set and if duration length is set
 
                 log.info("LandPaymentPlanController:createLandPaymentPlan:  paymentPlanDTO converted");
+
                 //check if this duration exist
                 Duration duration= paymentUtilService.getByLengthAndType(paymentPlanDTO.getDurationLength(), paymentPlanDTO.getDurationType());
-
 
                 log.info("LandPaymentPlanController:createLandPaymentPlan:  duration after lookup" +duration);
 
@@ -78,40 +82,36 @@ public class LandPaymentPlanController {
                         durationFound= false;
                         //create a new duration
                         Duration duration1= new Duration();
+
                         duration1.setLength(paymentPlanDTO.getDurationLength());
                         duration1.setFrequency(paymentPlanDTO.getDurationType());
-                        duration1.setWeight(paymentPlanDTO.getDurationWeight());
+
                         PaymentPlan paymentPlan1= paymentPlan;
                         durationNew= duration1;
                     }else{
                         durationFound=true;
                         durationNew=duration;
                     }
+
+               //duplicate a payment plan
                 PaymentPlan paymentPlanClone= new PaymentPlan();
-                BeanUtils.copyProperties(paymentPlan, paymentPlanClone);
-                Duration durationClone= new Duration();
-                BeanUtils.copyProperties(durationNew, durationClone);
+                    BeanUtils.copyProperties(paymentPlan,paymentPlanClone);
 
 
-                /**
-                 *
-                 *  revisit this  part of the code for comparison. payment plans should not occur duplicate on db
-                 */
-                //check if the payment plan exist
-                if(land.getLandPaymentPlans()!= null) {
-                    Stream<com.frontlinehomes.save2buy.data.land.data.LandPaymentPlan> landPaymentPlanStream = land.getLandPaymentPlans().stream().filter(landPaymentPlan -> {
-                        return (landPaymentPlan.getPaymentPlan().equals(paymentPlanClone)) ? true : false;
-                    });
+                //get the payment plan
+               Set<LandPaymentPlan> landPaymentPlanSet= land.getLandPaymentPlans();
+               paymentPlanClone.setDuration(duration);
 
-                    if (landPaymentPlanStream.count() > 0) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment Plan already exist");
+                //check if the payment plan already exist for the specified land
+                landPaymentPlanSet.forEach(landPaymentPlan1 -> {
+                    if(landPaymentPlan1.getPaymentPlan().equals(paymentPlanClone)){
+                        throw new EntityDuplicationException("MonnifyController Plan Already Exist");
                     }
-                }
+                });
 
 
-
-                //if it didn't exist persist, but if it existed, then update it
-                Duration durationManaged=paymentUtilService.addDuration(durationNew);
+                //create a new duration if it does not exist, else merge.
+                 Duration durationManaged=paymentUtilService.addDuration(durationNew);
 
 
                 //save the paymentPlan
@@ -130,14 +130,18 @@ public class LandPaymentPlanController {
                 LandPaymentPlan landPaymentPlanManaged= landPaymentPlanService.saveLandPaymentPlan(landPaymentPlan);
 
 
-                return  new ResponseEntity<PaymentPlanResponseDTO>(convertPaymentPlanToResponseDTO(paymentPlanManaged),HttpStatus.OK);
+                return  new ResponseEntity<PaymentPlanResponseDTO>(DTOUtility.convertPaymentPlanToResponseDTO(paymentPlanManaged),HttpStatus.OK);
 
             }else{
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Land cannot be found");
             }
-        }catch (Exception e){
+        }catch (EntityDuplicationException e){
             log.info("LandPaymentPlanController:createLandPaymentPlan:  "+e.getMessage());
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Land cannot be found");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }catch (NotNullFieldException e){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }catch (NoSuchElementException e){
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }
     }
 
@@ -154,32 +158,151 @@ public class LandPaymentPlanController {
             ArrayList paymentPlans= new ArrayList<PaymentPlanResponseDTO>();
 
              land.getLandPaymentPlans().forEach(landPaymentPlan -> {
-                  paymentPlans.add(convertPaymentPlanToResponseDTO(landPaymentPlan.getPaymentPlan()));
+                  paymentPlans.add(DTOUtility.convertPaymentPlanToResponseDTO(landPaymentPlan.getPaymentPlan()));
              });
              return new ResponseEntity<ArrayList<PaymentPlanResponseDTO>>(paymentPlans,HttpStatus.OK);
         }catch (Exception e){
             throw  new ResponseStatusException(HttpStatus.NOT_FOUND, "The requested resource could not be found");
+        }
+    }
+
+
+    @CrossOrigin( allowedHeaders = {"Authorization", "Content-Type"}, methods = {RequestMethod.POST})
+    @PostMapping("/duration/create")
+    public ResponseEntity<ResponseDTO<DurationResponseDTO>> createDuration(DurationDTO durationDTO){
+
+        //validate durationDTO field
+        if(durationDTO.getFrequency() == null || durationDTO.getLength() == null) return new ResponseEntity<ResponseDTO<DurationResponseDTO>>(new ResponseDTO<>(ResponseStatus.Error, "frequency and length fields are required"), HttpStatus.BAD_REQUEST);
+
+        Duration duration= DTOUtility.convertDurationDTOtoDuration(durationDTO);
+
+        DurationResponseDTO durationResponseDTO= DTOUtility.convertDurationResponseDTOtoDuration(paymentUtilService.addDuration(duration));
+        ResponseDTO<DurationResponseDTO> responseDTO= new ResponseDTO<DurationResponseDTO>(ResponseStatus.Success, "Successful");
+        responseDTO.setBody(durationResponseDTO);
+        return new ResponseEntity<ResponseDTO<DurationResponseDTO>>(responseDTO, HttpStatus.OK);
+
+    }
+
+    @CrossOrigin( allowedHeaders = {"Authorization", "Content-Type"}, methods = {RequestMethod.POST})
+    @PostMapping("/configuration/create")
+    public ResponseEntity<ResponseDTO<CalculatorConfigDTO>> createCalculatorConfig(@RequestBody  CalculatorConfigDTO calculatorConfigDTO){
+
+        //validate fields
+        if(calculatorConfigDTO.getLandId() == null) return  new ResponseEntity<ResponseDTO<CalculatorConfigDTO>>(new ResponseDTO(ResponseStatus.Error, "landId is required"), HttpStatus.BAD_REQUEST);
+
+        if(calculatorConfigDTO.getDurationList() == null) return new ResponseEntity<ResponseDTO<CalculatorConfigDTO>>(new ResponseDTO(ResponseStatus.Error, "duration is required"), HttpStatus.BAD_REQUEST);
+
+        if(calculatorConfigDTO.getDurationList() == null) return new ResponseEntity<ResponseDTO<CalculatorConfigDTO>>(new ResponseDTO(ResponseStatus.Error, "frequency is required"), HttpStatus.BAD_REQUEST);
+
+        try{
+            Land land=landService.getLand(calculatorConfigDTO.getLandId());
+
+           List<DurationDTO> durationDTO= calculatorConfigDTO.getDurationList();
+
+           //get all durations
+            List<Duration> durationList = paymentUtilService.getAllDuration();
+
+            Set<LandCalculatorConfigDuration> configDurationSet= new HashSet<LandCalculatorConfigDuration>();
+
+            //scan through all duration
+            for (DurationDTO dto : durationDTO) {
+                Boolean found =false;
+                for (Duration duration : durationList) {
+
+                    if( duration.getFrequency().equals(dto.getFrequency()) && duration.getLength().equals(dto.getLength())){
+                        //create an array of LandCalculatorConfigDuration
+                        LandCalculatorConfigDuration configDuration= new LandCalculatorConfigDuration();
+                        duration.addLandCalculatorConfigDuration(configDuration);
+                        configDurationSet.add(configDuration);
+                       found= true;
+                    }
+                }
+
+
+                if(!found){
+                    //create a new duration
+                    Duration duration1= new Duration();
+                    duration1.setLength(dto.getLength());
+                    duration1.setFrequency(dto.getFrequency());
+
+                    //persist the duration
+                    Duration durationManaged= paymentUtilService.addDuration(duration1);
+                    LandCalculatorConfigDuration configDuration= new LandCalculatorConfigDuration();
+                    durationManaged.addLandCalculatorConfigDuration(configDuration);
+                    configDurationSet.add(configDuration);
+                }
+            }
+
+
+            //get all periods
+            List<Period> periodList = paymentUtilService.getAllPeriod();
+            List<PeriodDTO> periodDTOList= calculatorConfigDTO.getPeriodList();
+
+            Set<LandCalculatorConfigPeriod> calculatorConfigPeriodSet = new HashSet<>();
+            for (PeriodDTO periodDTO : periodDTOList) {
+                Boolean found=false;
+                for (Period period : periodList) {
+                    if(period.getFrequency().equals(periodDTOList)){
+                        //create a new calculatorConfigPeriods
+                        LandCalculatorConfigPeriod calculatorConfigPeriod= new LandCalculatorConfigPeriod();
+                        period.addLandCalculatorConfigPeriod(calculatorConfigPeriod);
+                        calculatorConfigPeriodSet.add(calculatorConfigPeriod);
+                    }
+                }
+
+                if(!found){
+                    LandCalculatorConfigPeriod calculatorConfigPeriod= new LandCalculatorConfigPeriod();
+                    //insert the period
+                    Period period= new Period();
+                    period.setFrequency(periodDTO.getFrequency());
+                    Period periodManaged= paymentUtilService.addPeriod(period);
+                    periodManaged.addLandCalculatorConfigPeriod(calculatorConfigPeriod);
+                    calculatorConfigPeriodSet.add(calculatorConfigPeriod);
+                }
+            }
+
+            //create a new LandCalculatorConfig
+            LandCalculatorConfig landCalculatorConfig= new LandCalculatorConfig();
+            Double maxLandSize= calculatorConfigDTO.getMaxLandSize() != null ? calculatorConfigDTO.getMinLandSize() : land.getAvailableSize();
+            Double minLandSize= calculatorConfigDTO.getMinLandSize() != null ? calculatorConfigDTO.getMinLandSize() : 255.0;
+            landCalculatorConfig.setMaxLandSize(maxLandSize);
+            landCalculatorConfig.setMinLandSize(minLandSize);
+            land.addCalculatorConfig(landCalculatorConfig);
+
+            //persist the landCalculatorConfig
+            LandCalculatorConfig landCalculatorConfigManaged= paymentUtilService.addCalculatorConfig(landCalculatorConfig);
+
+
+            //add all the set of landCalculatorConfigDuration
+            for (LandCalculatorConfigDuration calculatorConfigDuration : configDurationSet) {
+                landCalculatorConfigManaged.addLandCalculatorConfigDuration(calculatorConfigDuration);
+            }
+
+            //update the calculator config
+            landCalculatorConfigManaged= paymentUtilService.addCalculatorConfig(landCalculatorConfig);
+
+            for (LandCalculatorConfigPeriod calculatorConfigPeriod : calculatorConfigPeriodSet) {
+                landCalculatorConfigManaged.addLandCalculatorConfigPeriod(calculatorConfigPeriod);
+            }
+
+            //update the calculator config
+            landCalculatorConfigManaged = paymentUtilService.addCalculatorConfig(landCalculatorConfig);
+
+            landService.addLand(land);
+
+            ResponseDTO<CalculatorConfigDTO> responseDTO= new ResponseDTO<CalculatorConfigDTO>(ResponseStatus.Success, "Successful");
+            responseDTO.setBody(calculatorConfigDTO);
+            return  new ResponseEntity<ResponseDTO<CalculatorConfigDTO>>(responseDTO, HttpStatus.OK);
+
+
+        }catch (NoSuchElementException e){
+            return  new ResponseEntity<ResponseDTO<CalculatorConfigDTO>>(new ResponseDTO(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_FOUND);
         }
 
     }
 
 
 
-    private PaymentPlan convertPaymentPlanDTOtoPaymentPlan(PaymentPlanDTO paymentPlanDTO){
-        PaymentPlan paymentPlan= new PaymentPlan();
-        BeanUtils.copyProperties(paymentPlanDTO, paymentPlan);
-        //create a new Duration Object
-        return paymentPlan;
-    }
-
-    private PaymentPlanResponseDTO convertPaymentPlanToResponseDTO(PaymentPlan paymentPlan){
-        PaymentPlanResponseDTO planResponseDTO = new PaymentPlanResponseDTO();
-        BeanUtils.copyProperties(paymentPlan, planResponseDTO);
-        planResponseDTO.setDurationLength(paymentPlan.getDuration().getLength());
-        planResponseDTO.setDurationWeight(paymentPlan.getDuration().getWeight());
-        planResponseDTO.setDurationType(paymentPlan.getDuration().getFrequency());
-        return  planResponseDTO;
-    }
 
 
 }

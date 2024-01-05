@@ -1,40 +1,33 @@
 package com.frontlinehomes.save2buy.controller;
-import com.frontlinehomes.save2buy.data.land.data.InvestorLand;
-import com.frontlinehomes.save2buy.data.users.Gender;
+import com.frontlinehomes.save2buy.data.ResponseDTO;
+import com.frontlinehomes.save2buy.data.ResponseStatus;
 import com.frontlinehomes.save2buy.data.users.Phone;
 import com.frontlinehomes.save2buy.data.users.User;
 import com.frontlinehomes.save2buy.data.users.investor.data.Investor;
 import com.frontlinehomes.save2buy.data.users.investor.request.InvestorDTO;
 import com.frontlinehomes.save2buy.data.users.investor.response.InvestorResponseDTO;
-import com.frontlinehomes.save2buy.data.users.request.LoginDTO;
 import com.frontlinehomes.save2buy.data.users.request.SignUpDTO;
 import com.frontlinehomes.save2buy.data.users.response.StatusResponseDTO;
-import com.frontlinehomes.save2buy.events.OnRegistrationCompleteEvent;
+import com.frontlinehomes.save2buy.events.registration.OnRegistrationCompleteEvent;
 import com.frontlinehomes.save2buy.exception.EntityDuplicationException;
 import com.frontlinehomes.save2buy.exception.NotNullFieldException;
 import com.frontlinehomes.save2buy.service.*;
+import com.frontlinehomes.save2buy.service.file.FileSystemStorageService;
+import com.frontlinehomes.save2buy.service.utils.DTOUtility;
 import jakarta.servlet.http.HttpServletRequest;
-import org.apache.coyote.Response;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.BeanWrapper;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.beans.PropertyDescriptor;
-import java.util.HashSet;
 import java.util.NoSuchElementException;
-import java.util.Set;
 
 
 @RestController
@@ -47,6 +40,9 @@ public class InvestorController {
 
     @Autowired
     ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    FileSystemStorageService fileSystemStorageService;
     private static Logger log = LogManager.getLogger( InvestorController.class);
 
     /**
@@ -61,40 +57,67 @@ public class InvestorController {
 
     @CrossOrigin
     @PostMapping("/create")
-    public ResponseEntity<SignUpDTO> createInvestor(@RequestBody SignUpDTO signUpDTO, HttpServletRequest request){
+    public ResponseEntity<ResponseDTO<SignUpDTO>> createInvestor(@RequestBody SignUpDTO signUpDTO, HttpServletRequest request){
+        //check for all required fields
+        if(signUpDTO.getEmail()== null){
+            return new ResponseEntity< ResponseDTO<SignUpDTO>>( new ResponseDTO<SignUpDTO>(ResponseStatus.Error,"Email is required"),HttpStatus.BAD_REQUEST);
+        }
+        //validate the email
+        EmailValidator validator = EmailValidator.getInstance();
+
+        if(!(validator.isValid(signUpDTO.getEmail()))){
+            return new ResponseEntity< ResponseDTO<SignUpDTO>>( new ResponseDTO<SignUpDTO>(ResponseStatus.Error,"Enter a valid Email"),HttpStatus.BAD_REQUEST);
+        }
+
+
+
         try{
             //check if password match
             if(signUpDTO.getPassword()!= null || signUpDTO.getConfirmPassword() != null){
                 if(signUpDTO.getPassword().equals( signUpDTO.getConfirmPassword())) {
-                    User user = convertSignUpDTOtoUser(signUpDTO);
+                    User user = DTOUtility.convertSignUpDTOtoUser(signUpDTO);
+
+                    //check if phone was provided
+                    Phone phone= new Phone();
+                    if(signUpDTO.getPrimaryLine()!=null){
+                        phone.setPhone(signUpDTO.getPrimaryLine());
+                        user.addPhone(phone);
+                    }
+
+                    //harsh user's password
                     user.setPassword(HarshService.getSecuredPassword(signUpDTO.getPassword()));
                     user.addInvestor(new Investor());
                     User user1= userService.saveUser(user);
-                    SignUpDTO newDTO= convertUserToSigUpDTO(user1);
+                    SignUpDTO newDTO=  DTOUtility.convertUserToSigUpDTO(user1);
                     signUpDTO.setPassword(null);
                     signUpDTO.setConfirmPassword(null);
                     String appUrl = request.getContextPath();
                     //public event
                      eventPublisher.publishEvent(new OnRegistrationCompleteEvent(user1, "https:save2buy.ng/page-confirm-mail/"));
                     log.info("InvestorController:createInvestor : investor created with email "+user1.getEmail());
-                    SignUpDTO signUpDTO1=convertUserToSigUpDTO(user1);
-                    signUpDTO1.setPassword(null);
-                    return new ResponseEntity<SignUpDTO>( signUpDTO1,HttpStatus.OK);
+                    SignUpDTO signUpDTO1=  DTOUtility.convertUserToSigUpDTO(user1);
+
+                    ResponseDTO<SignUpDTO> responseDTO= new ResponseDTO<SignUpDTO>(ResponseStatus.Success,"Successful");
+                    responseDTO.setBody(signUpDTO1);
+                    return new ResponseEntity< ResponseDTO<SignUpDTO>>( responseDTO,HttpStatus.OK);
                 }else{
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Password does not match");
+                    return new ResponseEntity< ResponseDTO<SignUpDTO>>( new ResponseDTO<SignUpDTO>(ResponseStatus.Error,"Password does not match"),HttpStatus.FORBIDDEN);
                 }
             }else{
-                throw  new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "Password fields cannot be empty");
+                return new ResponseEntity< ResponseDTO<SignUpDTO>>( new ResponseDTO<SignUpDTO>(ResponseStatus.Error,"Password is required"),HttpStatus.BAD_REQUEST);
             }
         }catch (EntityDuplicationException exec){
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "User with email "+signUpDTO.getEmail()+" already exist"
-            );
+            log.error("InvestorController:createInvestor : conflicts occurred creating user");
+            return new ResponseEntity< ResponseDTO<SignUpDTO>>( new ResponseDTO<SignUpDTO>(ResponseStatus.Error,"User with email "+signUpDTO.getEmail()+" already exist"),HttpStatus.CONFLICT);
+
         }catch (NotNullFieldException e){
-            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, e.getMessage());
+            return new ResponseEntity< ResponseDTO<SignUpDTO>>( new ResponseDTO<SignUpDTO>(ResponseStatus.Error, e.getMessage()),HttpStatus.BAD_REQUEST);
         }catch (Exception e){
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User already exist");
+            log.error("InvestorController: createInvestor:  "+e.getMessage());
+            return new ResponseEntity< ResponseDTO<SignUpDTO>>( new ResponseDTO<SignUpDTO>(ResponseStatus.Error,"User with email "+signUpDTO.getEmail()+" already exist"),HttpStatus.CONFLICT);
         }
     }
+
 
 
 
@@ -104,10 +127,10 @@ public class InvestorController {
     public ResponseEntity<InvestorDTO> createInvestor(@RequestBody InvestorDTO investorDTO, @PathVariable Long userId){
         try{
             User user= userService.getUser(userId);
-            Investor investor= convertInvestorDTOtoInvestor(investorDTO);
+            Investor investor=  DTOUtility.convertInvestorDTOtoInvestor(investorDTO);
             user.addInvestor(investor);
             Investor investor1= investorService.addInvestor(investor);
-          return  new  ResponseEntity<InvestorDTO>(convertInvestorToInvestorDTO(investor1), HttpStatus.OK);
+          return  new  ResponseEntity<InvestorDTO>( DTOUtility.convertInvestorToInvestorDTO(investor1), HttpStatus.OK);
         }catch(NoSuchElementException e){
              throw   new ResponseStatusException(HttpStatus.NOT_FOUND, "User with id "+userId+" not found");
         }
@@ -115,7 +138,7 @@ public class InvestorController {
 
 
 
-    @CrossOrigin( allowedHeaders = {"Authorization"})
+    @CrossOrigin(allowedHeaders = {"Authorization"})
     @GetMapping("/{email}")
     public ResponseEntity<InvestorResponseDTO> getInvestorDetails(@PathVariable String email){
         //fetch the
@@ -124,7 +147,7 @@ public class InvestorController {
             if(user==null){
                 throw  new ResponseStatusException(HttpStatus.NOT_FOUND, "Investor not found with email:"+email);
             }
-            return new ResponseEntity<InvestorResponseDTO>(convertUserToInvestorResponseDTO(user),HttpStatus.OK);
+            return new ResponseEntity<InvestorResponseDTO>( DTOUtility.convertUserToInvestorResponseDTO(user),HttpStatus.OK);
         }catch (NoSuchElementException e){
             throw  new ResponseStatusException(HttpStatus.NOT_FOUND, "Investor not found with email:"+email);
         }
@@ -163,7 +186,7 @@ public class InvestorController {
             }
             BeanUtils.copyProperties(investorDTO, user,CopyUtils.getNullPropertyNames(investorDTO));
             userService.saveUser(user);
-            return new ResponseEntity<InvestorResponseDTO>(convertUserToInvestorResponseDTO(user),HttpStatus.OK);
+            return new ResponseEntity<InvestorResponseDTO>( DTOUtility.convertUserToInvestorResponseDTO(user),HttpStatus.OK);
         }catch (NoSuchElementException e){
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User with id"+id+" not found");
         }
@@ -204,80 +227,77 @@ public class InvestorController {
         }
     }
 
+    @CrossOrigin( allowedHeaders = {"Authorization", "Content-Type"}, methods = {RequestMethod.POST})
+    @PostMapping("/passport/{id}")
+    public ResponseEntity saveInvestorPassport(@RequestParam("file") MultipartFile file, @PathVariable Long id){
 
 
-
-    private InvestorResponseDTO convertUserToInvestorResponseDTO(User user){
-        InvestorResponseDTO investorResponseDTO= new InvestorResponseDTO();
-        BeanUtils.copyProperties(user, investorResponseDTO);
-        //copy the from Investor object investorDTO
-        BeanUtils.copyProperties(user.getInvestor(), investorResponseDTO);
-        String line=null;
-        //set the primaryline
-         if(!user.getPhone().isEmpty()){
-             line= user.getPhone().get(0).getPhone();
-         }
-         investorResponseDTO.setPrimaryLine(line);
-        investorResponseDTO.setId(user.getId());
-        return investorResponseDTO;
-    }
-
-
-
-    private InvestorDTO convertUserToInvestorDTO(User user){
-        InvestorDTO investorDTO= new InvestorDTO();
-        BeanUtils.copyProperties(user, investorDTO);
-        String line=null;
-        //check if user phone exist
-        if(!user.getPhone().isEmpty()){
-            line= user.getPhone().get(0).getPhone();
+        User user= null;
+        try{
+            //check if the user exist
+           user = userService.getUser(id);
+        }catch (NoSuchElementException e){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
         }
-        investorDTO.setPrimaryLine(line);
-        //copy the from Investor object investorDTO
-        BeanUtils.copyProperties(user.getInvestor(), investorDTO);
-        return investorDTO;
-    }
 
-    private User convertInvestorDTOtoUser(InvestorDTO investorDTO){
-        User user= new User();
-        Investor investor= new Investor();
-        BeanUtils.copyProperties(investorDTO, user);
-        BeanUtils.copyProperties(investorDTO, investor);
-        //get phone provided
-        Phone phone= new Phone();
-        if(investorDTO.getPrimaryLine()!=null){
-            phone.setPhone(investorDTO.getPrimaryLine());
-            user.addPhone(phone);
+        try{
+            if(file.isEmpty()){
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File cannot be empty");
+            }
+
+            String url=fileSystemStorageService.store(file, "user_passport_"+id+".jpg", "passport");
+
+            //persist the url in the database
+
+            user.getInvestor().setPassportUrl(url);
+            userService.saveUser(user);
+
+
+            log.info("FileSystemStorageService:store: image uploaded successfully");
+            return ResponseEntity.ok().build();
+        }catch (Exception e){
+            log.warn("LandController:uploadImage:  error uploading image "+e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        user.addInvestor(investor);
-        return user;
+
+
     }
 
 
-    private InvestorDTO convertInvestorToInvestorDTO(Investor investor){
-        InvestorDTO investorDTO= new InvestorDTO();
-        BeanUtils.copyProperties(investor, investorDTO);
-        return investorDTO;
-    }
+    @CrossOrigin( allowedHeaders = {"Authorization", "Content-Type"}, methods = {RequestMethod.POST})
+    @PostMapping("/identification/{id}")
+    public ResponseEntity saveInvestorCredential(@RequestParam("file") MultipartFile file, @PathVariable Long id){
 
 
-    private Investor convertInvestorDTOtoInvestor(InvestorDTO investorDTO){
-        Investor investor= new Investor();
-        BeanUtils.copyProperties(investorDTO, investor);
-        return investor;
+        User user= null;
+        try{
+            //check if the user exist
+          user = userService.getUser(id);
+        }catch (NoSuchElementException e){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
+        }
+
+        try{
+            if(file.isEmpty()){
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File cannot be empty");
+            }
+
+            String url=fileSystemStorageService.store(file, "user_passport_"+id+".jpg", "credentials");
+
+            //persist the url in the database
+            user.getInvestor().setIdCardUrl(url);
+            userService.saveUser(user);
+
+            log.info("FileSystemStorageService:store: image uploaded successfully");
+            return ResponseEntity.ok().build();
+        }catch (Exception e){
+            log.warn("LandController:uploadImage:  error uploading image "+e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+
     }
 
-    private User convertSignUpDTOtoUser(SignUpDTO signUpDTO){
-        User user= new User();
-        BeanUtils.copyProperties(signUpDTO, user);
-        return user;
-    }
-
-    public SignUpDTO convertUserToSigUpDTO(User user){
-        SignUpDTO signUpDTO= new SignUpDTO();
-        BeanUtils.copyProperties(user, signUpDTO);
-        return signUpDTO;
-    }
 
 
 

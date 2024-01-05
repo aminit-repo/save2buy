@@ -22,8 +22,6 @@ public class Card {
 
     private String number;
 
-    private String cvv;
-
     @OneToOne
     private Account account;
 

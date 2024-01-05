@@ -6,15 +6,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ElasticContent {
-   // private ArrayList<ElasticBody> Body= new ArrayList<ElasticBody>();
+public class ElasticContent<T> {
    @JsonProperty("Merge")
-    private ElasticMerge Merge;
+    private T Merge;
     @JsonProperty("EnvelopeFrom")
     private String EnvelopeFrom;
     @JsonProperty("From")
@@ -23,6 +21,4 @@ public class ElasticContent {
     private String Subject;
     @JsonProperty("TemplateName")
     private String TemplateName;
-
-
 }

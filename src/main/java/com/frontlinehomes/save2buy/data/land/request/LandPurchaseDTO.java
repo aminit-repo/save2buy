@@ -15,11 +15,13 @@ import lombok.Setter;
 @Getter
 @Setter
 public class LandPurchaseDTO {
+    /** purchaseId is same as investorLand's id  **/
+    private Long purchaseId;
     private  Long userId;
-    @Enumerated(EnumType.STRING)
-    private BillingType billingType;
-    private Double size;
+
+    private String email;
+
     private Long paymentPlanId;
-    private PaymentPlanDTO paymentPlan;
+    private LandPurchasePaymentPlanDTO paymentPlan;
 
 }

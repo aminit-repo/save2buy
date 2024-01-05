@@ -27,9 +27,6 @@ public class Duration  implements Serializable {
     private Set<PaymentPlan> paymentPlan;
 
 
-
-    private Integer weight;
-
     @OneToMany(mappedBy = "duration", cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
     private Set<LandCalculatorConfigDuration> landCalculatorConfigDuration= new HashSet<>();
 

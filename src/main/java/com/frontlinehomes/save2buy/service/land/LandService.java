@@ -15,6 +15,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
+@Transactional
 public class LandService {
     @Autowired
    private LandRepository landRepository;
@@ -22,10 +23,12 @@ public class LandService {
         return  landRepository.save(land);
     }
 
-    public Land getLand(Long id){
+    public Land getLand(Long id) throws NoSuchElementException{
+
         try{
             Optional<Land> land= landRepository.findById(id);
-            return  land.get();
+            if(land.get()== null) throw new NoSuchElementException("Land with id "+id+"Cannot be found");
+            return land.get();
         }catch (NoSuchElementException e){
             throw e;
         }

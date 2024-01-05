@@ -20,9 +20,9 @@ public class LandCalculatorConfig implements Serializable {
     @Setter(AccessLevel.NONE)
     @GeneratedValue
     private Long id;
-    @OneToMany
+    @OneToMany(mappedBy = "landCalculatorConfig", cascade = {CascadeType.ALL})
     private Set<LandCalculatorConfigPeriod> frequencies;
-    @OneToMany
+    @OneToMany(mappedBy = "landCalculatorConfig", cascade = {CascadeType.ALL})
     private Set<LandCalculatorConfigDuration> durationList;
 
     private Double maxLandSize;

@@ -13,6 +13,7 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.type.YesNoConverter;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity(name = "profile")
@@ -75,6 +76,9 @@ public class User{
     }
 
     public void addPhone(Phone phone){
+        if(this.phone== null){
+            this.phone=new ArrayList<>();
+        }
         phone.setUser(this);
         this.phone.add(phone);
     }

@@ -66,8 +66,8 @@ public class PaymentPlan implements Serializable {
 
 
     public void removeInvestorLandPaymentPlan(InvestorLandPaymentPlan investorLandPaymentPlan){
-        investorLandPaymentPlan.setPaymentPlan(null);
         this.investorLandPaymentPlan.remove(investorLandPaymentPlan);
+        investorLandPaymentPlan.setPaymentPlan(null);
     }
 
 
@@ -91,12 +91,12 @@ public class PaymentPlan implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PaymentPlan that = (PaymentPlan) o;
-        return amount.equals(that.amount) && frequency.equals(that.frequency) && duration.equals(that.duration) ;
+        return amount.equals(that.amount) && frequency.equals(that.frequency) && duration.equals(that.duration) && charges.equals(((PaymentPlan) o).charges) ;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(amount, frequency, duration);
+        return Objects.hash(amount, frequency, duration, charges);
     }
 
 

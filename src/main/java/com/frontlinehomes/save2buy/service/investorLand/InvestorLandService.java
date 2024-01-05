@@ -1,11 +1,18 @@
 package com.frontlinehomes.save2buy.service.investorLand;
 
 import com.frontlinehomes.save2buy.data.land.data.InvestorLand;
+import com.frontlinehomes.save2buy.data.land.data.Land;
+import com.frontlinehomes.save2buy.data.users.investor.data.Investor;
 import com.frontlinehomes.save2buy.repository.InvestorLandRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
 @Service
+@Transactional
 public class InvestorLandService {
     @Autowired
     private InvestorLandRepository investorLandRepository;
@@ -14,5 +21,29 @@ public class InvestorLandService {
     public InvestorLand addInvestorLand(InvestorLand investorLand){
          return investorLandRepository.save(investorLand);
     }
+
+    public InvestorLand getInvestorLand(Long id) throws NoSuchElementException {
+        try{
+            Optional<InvestorLand> investorLand= investorLandRepository.findById(id);
+
+            if(investorLand.isEmpty()) throw new NoSuchElementException("Investor's Land with id= "+id+"cannot be found");
+
+            return investorLand.get();
+        }catch (Exception e){
+            throw new NoSuchElementException("Investor's Land with id= "+id+"cannot be found");
+        }
+    }
+
+    public InvestorLand getInvestorLandByLand(Investor investor,Land land){
+        try {
+            InvestorLand investorLand= investorLandRepository.findByInvestorAndLand(investor, land);
+            if(investorLand == null)  throw new NoSuchElementException("Investor Land cannot be found");
+            return investorLand;
+        }catch (NoSuchElementException e){
+            throw new NoSuchElementException("Investor Land cannot be found");
+        }
+    }
+
+
 
 }

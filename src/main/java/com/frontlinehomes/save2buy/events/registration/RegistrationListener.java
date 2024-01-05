@@ -1,4 +1,4 @@
-package com.frontlinehomes.save2buy.events;
+package com.frontlinehomes.save2buy.events.registration;
 
 
 import com.frontlinehomes.save2buy.client.elasticMail.ElasticMailClient;
@@ -50,7 +50,7 @@ public class RegistrationListener implements
                 = event.getAppUrl()  + token;
 
         //user.getEmail()
-        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,user.getEmail() ,"no-reply <no-reply@save2buy.ng>","Save2buy Email Verification", "no-reply <no-reply@save2buy.ng>","email-verification");
+        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,user.getEmail() ,"no-reply@save2buy.ng","Save2buy Email Verification", "no-reply <no-reply@save2buy.ng>","email-verification");
         verifyEmail.setName(user.getFirstName()!=null? user.getFirstName(): " ");
         try{
             elasticMailClient.sendTransactionEmail(verifyEmail);

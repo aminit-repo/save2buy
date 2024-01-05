@@ -27,7 +27,7 @@ public class Land implements Serializable {
 
     private String subTitle;
 
-    private Double priceInSqm;
+    private Double priceInSqm; //this field signifies price per Sqm.
 
     private Double availableSize;
 
@@ -71,7 +71,7 @@ public class Land implements Serializable {
         investorLand.setLand(null);
     }
 
-    private void addCalculatorConfig(LandCalculatorConfig calculatorConfig){
+    public void addCalculatorConfig(LandCalculatorConfig calculatorConfig){
         this.calculatorConfig= calculatorConfig;
         calculatorConfig.setLand(this);
     }

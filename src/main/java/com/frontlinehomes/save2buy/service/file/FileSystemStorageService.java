@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 public class FileSystemStorageService implements StorageService {
 
     private final Path rootLocation;
-    private static Logger log = LogManager.getLogger( FileSystemStorageService.class);
+    private static Logger log = LogManager.getLogger(FileSystemStorageService.class);
 
     @Autowired
     public FileSystemStorageService(StorageProperties properties) {
@@ -47,11 +47,9 @@ public class FileSystemStorageService implements StorageService {
                 throw new StorageException("Failed to store empty file.");
             }
 
-
-
             Path filePath;
             //check if the directory exist
-            if(filename!=null){
+            if(folder!=null){
                 filePath= this.rootLocation.resolve(folder);
             }else{
                 filePath= this.rootLocation;
@@ -81,7 +79,6 @@ public class FileSystemStorageService implements StorageService {
             log.error(e.getMessage());
             throw new StorageException("Failed to store file.", e);
         }
-
     }
 
     @Override

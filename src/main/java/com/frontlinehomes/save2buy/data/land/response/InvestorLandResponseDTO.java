@@ -1,6 +1,7 @@
 package com.frontlinehomes.save2buy.data.land.response;
 
 import com.frontlinehomes.save2buy.data.account.data.BillingType;
+import com.frontlinehomes.save2buy.data.land.data.LandStatus;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.Getter;
@@ -14,13 +15,16 @@ import java.sql.Timestamp;
 @Getter
 @NoArgsConstructor
 public class InvestorLandResponseDTO {
-    private Long id;
+
+    /** purchaseId is same as investorLand's id  **/
+    private Long purchaseId;
     private Long userId;
     private Long landId;
-
     private Double size;
 
     private Double amount;
+    @Enumerated(EnumType.STRING)
+    private LandStatus landStatus;
 
     @Enumerated(EnumType.STRING)
     private BillingType billingType;

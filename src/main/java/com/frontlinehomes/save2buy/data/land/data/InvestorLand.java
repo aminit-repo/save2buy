@@ -31,8 +31,9 @@ public class InvestorLand implements Serializable {
     private Investor investor;
 
     private Double size;
-
     private Double amount;
+    @Enumerated(EnumType.STRING)
+    private LandStatus landStatus;
 
     @Enumerated(EnumType.STRING)
     private BillingType billingType;
@@ -40,15 +41,20 @@ public class InvestorLand implements Serializable {
     @CurrentTimestamp
     private Timestamp creationDate;
 
+
+
     @OneToMany(mappedBy = "investorLand", cascade = {CascadeType.ALL})
     @Setter(AccessLevel.NONE)
     private List<InvestorLandPaymentPlan> investorLandPaymentPlan;
-            ;
 
-    @OneToMany(mappedBy = "investorLand", cascade = {CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
+
+    @OneToMany(mappedBy = "investorLand", cascade = {CascadeType.PERSIST,  CascadeType.REMOVE}, orphanRemoval = true)
     private List<Transaction> transactionList;
 
     public void addTransaction(Transaction transaction){
+        if(this.transactionList== null){
+            this.transactionList= new ArrayList<>();
+        }
         transaction.setInvestorLand(this);
         this.transactionList.add(transaction);
     }
@@ -57,7 +63,6 @@ public class InvestorLand implements Serializable {
         this.transactionList.remove(transaction);
         transaction.setInvestorLand(null);
     }
-
 
     public void addInvestorLandPaymentPlan(InvestorLandPaymentPlan investorLandPaymentPlan){
         if(this.investorLandPaymentPlan== null){
@@ -71,7 +76,6 @@ public class InvestorLand implements Serializable {
         this.investorLandPaymentPlan.remove(investorLandPaymentPlan);
         investorLandPaymentPlan.setInvestorLand(null);
     }
-
 
 
     @Override

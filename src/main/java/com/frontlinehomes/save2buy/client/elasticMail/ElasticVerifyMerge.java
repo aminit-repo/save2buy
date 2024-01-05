@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ElasticMerge {
+public class ElasticVerifyMerge {
    @JsonProperty("Verify")
    public String Verify;
 

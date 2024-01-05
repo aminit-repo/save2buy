@@ -4,7 +4,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,23 +18,23 @@ import java.util.Objects;
 public class LandCalculatorConfigPeriod implements Serializable {
     @Id
     @GeneratedValue
-    @Setter(AccessLevel.NONE)
     private Long id;
     @ManyToOne
-    private LandCalculatorConfig landCalculatorConfig;
-    @ManyToOne
     private Period period;
+
+    @ManyToOne
+    private LandCalculatorConfig landCalculatorConfig;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         LandCalculatorConfigPeriod that = (LandCalculatorConfigPeriod) o;
-        return landCalculatorConfig.equals(that.landCalculatorConfig) && period.equals(that.period);
+        return period.equals(that.period) && landCalculatorConfig.equals(that.landCalculatorConfig);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(landCalculatorConfig, period);
+        return Objects.hash(period, landCalculatorConfig);
     }
 }
