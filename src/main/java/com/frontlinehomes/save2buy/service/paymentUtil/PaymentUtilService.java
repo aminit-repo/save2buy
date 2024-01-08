@@ -14,8 +14,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.InvalidParameterException;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -155,7 +155,7 @@ public class PaymentUtilService {
 
             Double finalPrice = oneOffAmount / occurance;
 
-            return finalPrice;
+            return this.round(finalPrice, 2);
         }
     }
 
@@ -173,6 +173,14 @@ public class PaymentUtilService {
             Calendar c = Calendar.getInstance();
             return "flh" + key;
 
-        }
+    }
+
+    public Double round(Double value, int places) {
+        if (places < 0) throw new IllegalArgumentException();
+
+        BigDecimal bd = new BigDecimal(Double.toString(value));
+        bd = bd.setScale(places, RoundingMode.HALF_UP);
+        return bd.doubleValue();
+    }
 
 }

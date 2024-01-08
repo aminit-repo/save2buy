@@ -160,8 +160,16 @@ public class MonnifyController {
             transaction.setChannel(Channel.Monnify);
             transaction.setAmount(initRequest.getAmount());
 
+            /**
+             *
+             * write code initialize the appropriate transactionType
+             */
+
+
             //persist the transaction value
             transactionService.save(transaction);
+
+
 
             //update the investorLand
             investorLand.setBillingType(initTransactionRequestDTO.getPaymentMethod());
@@ -268,6 +276,10 @@ public class MonnifyController {
 
               //successful transaction
               eventPublisher.publishEvent(new OnPaymentCompleteEvent(investorLand, monnifyChargeCardResponse.getResponseBody().getAuthorizedAmount(), monnifyChargeCardResponse.getResponseBody().getPaymentReference()));
+
+              //update the investorLand Land Status
+              investorLand.setLandStatus(LandStatus.Initiated);
+              investorLandService.addInvestorLand(investorLand);
 
           }
 

@@ -59,6 +59,7 @@ public class MonnifyService {
         }
     }
 
+
     public MonnifyInitResponse initializeTransaction(MonnifyInitRequest initRequest) throws MonnifyServiceException, MonnifyRefException, MonnifyInitException {
 
         try{
@@ -96,6 +97,7 @@ public class MonnifyService {
         try{
             return  monnifyClient.chargeCard(monnifyChargeCardRequest);
         }catch (MonnifyAuthException e){
+
             //if regeneration of access token fails, then send, service unavailable
             if(!monnifyClient.regenerateAccessToken()){
                 throw  new MonnifyServiceException("service unavailable");

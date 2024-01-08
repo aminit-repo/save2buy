@@ -7,4 +7,4 @@ spring:
 
 sql:
   init:
-    mode: Always
+    mode: none

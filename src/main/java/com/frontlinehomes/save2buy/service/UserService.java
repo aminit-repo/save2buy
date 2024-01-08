@@ -38,9 +38,10 @@ public class UserService {
     public User getUser(Long id){
         try{
             Optional<User> user= userRepository.findById(id);
+            if(user.isEmpty()) throw new NoSuchElementException("user cannot be found");
             return  user.get();
         }catch (NoSuchElementException e){
-            throw e;
+            throw new NoSuchElementException("user cannot be found");
         }
 
     }
