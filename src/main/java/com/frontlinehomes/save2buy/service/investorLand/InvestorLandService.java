@@ -2,6 +2,7 @@ package com.frontlinehomes.save2buy.service.investorLand;
 
 import com.frontlinehomes.save2buy.data.land.data.InvestorLand;
 import com.frontlinehomes.save2buy.data.land.data.Land;
+import com.frontlinehomes.save2buy.data.land.data.LandStatus;
 import com.frontlinehomes.save2buy.data.users.investor.data.Investor;
 import com.frontlinehomes.save2buy.repository.InvestorLandRepository;
 import jakarta.transaction.Transactional;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.*;
 
 @Service
 @Transactional
@@ -43,6 +45,26 @@ public class InvestorLandService {
             throw new NoSuchElementException("Investor Land cannot be found");
         }
     }
+
+    public InvestorLand getInvestorLandById(Long id){
+        try{
+            InvestorLand investorLand= investorLandRepository.findById(id).get();
+            if(investorLand== null)  throw new NoSuchElementException("Investor Land cannot be found");
+
+            return investorLand;
+        }catch (NoSuchElementException e){
+            throw new NoSuchElementException("Investor Land cannot be found");
+        }
+    }
+
+    public List<InvestorLand> getAllInitiatedInvestorLand(){
+        return investorLandRepository.findAllByLandStatus(LandStatus.Initiated);
+    }
+
+    public List<InvestorLand> getAllInitiatedInvestorLandByID(Long id){
+        return investorLandRepository.findAllByIdAndLandStatus(id,LandStatus.Initiated);
+    }
+
 
 
 

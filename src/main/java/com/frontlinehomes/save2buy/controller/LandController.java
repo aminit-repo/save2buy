@@ -4,7 +4,10 @@ package com.frontlinehomes.save2buy.controller;
 
 import com.frontlinehomes.save2buy.data.ResponseDTO;
 import com.frontlinehomes.save2buy.data.ResponseStatus;
+import com.frontlinehomes.save2buy.data.account.data.BillingType;
+import com.frontlinehomes.save2buy.data.account.request.InitTransactionRequestDTO;
 import com.frontlinehomes.save2buy.data.account.response.InitTransactionResponseDTO;
+import com.frontlinehomes.save2buy.data.account.response.TransactionResponseDTO;
 import com.frontlinehomes.save2buy.data.land.data.*;
 import com.frontlinehomes.save2buy.data.land.request.*;
 import com.frontlinehomes.save2buy.data.land.response.CheckOutResponseDTO;
@@ -13,11 +16,14 @@ import com.frontlinehomes.save2buy.data.land.response.PaymentPlanResponseDTO;
 import com.frontlinehomes.save2buy.data.users.User;
 import com.frontlinehomes.save2buy.data.users.investor.data.Investor;
 
+import com.frontlinehomes.save2buy.data.users.investor.request.InvestorDTO;
 import com.frontlinehomes.save2buy.data.users.investor.response.InvestorResponseDTO;
+import com.frontlinehomes.save2buy.data.verification.JwtDetails;
 import com.frontlinehomes.save2buy.exception.CalculatorConfigException;
 import com.frontlinehomes.save2buy.exception.NotNullFieldException;
 import com.frontlinehomes.save2buy.service.CopyUtils;
 import com.frontlinehomes.save2buy.service.InvestorService;
+import com.frontlinehomes.save2buy.service.JWTService;
 import com.frontlinehomes.save2buy.service.UserService;
 import com.frontlinehomes.save2buy.service.file.FileSystemStorageService;
 import com.frontlinehomes.save2buy.service.investorLand.InvestorLandService;
@@ -26,6 +32,7 @@ import com.frontlinehomes.save2buy.service.landPaymentPlan.LandPaymentPlanServic
 
 import com.frontlinehomes.save2buy.service.paymentUtil.PaymentUtilService;
 import com.frontlinehomes.save2buy.service.utils.DTOUtility;
+import okhttp3.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.BeanUtils;
@@ -38,6 +45,11 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
+
+/**
+ *
+ * Custom Errors originated from LandController starts with the code 3XX
+ */
 
 @RestController
 @RequestMapping("/land")
@@ -61,6 +73,9 @@ public class LandController {
   @Autowired
   private PaymentUtilService paymentUtilService;
 
+  @Autowired
+  private JWTService jwtService;
+
 
 
   private static Logger log = LogManager.getLogger(LandController.class);
@@ -76,15 +91,17 @@ public class LandController {
 
   @CrossOrigin( allowedHeaders = {"Authorization", "Content-Type" })
   @PostMapping("/create")
-  public ResponseEntity<LandDetailsDTO>  createLand(@RequestBody AddLandDTO addLandDTO){
+  public ResponseEntity<ResponseDTO<LandDetailsDTO>>  createLand(@RequestBody AddLandDTO addLandDTO){
     if(addLandDTO.getSize()!=null && addLandDTO.getTitle()!= null&& addLandDTO.getNeigborhood()!= null && addLandDTO.getPriceInSqm()!=null){
       //persist land
       Land land=  landService.addLand(DTOUtility.convertAddLandDTOtoLand(addLandDTO));
       LandDetailsDTO landDetailsDTO= DTOUtility.convertLandToLandDetailsDTO(land);
-      return ResponseEntity.ok(landDetailsDTO);
+      ResponseDTO<LandDetailsDTO> responseDTO= new ResponseDTO<LandDetailsDTO>(ResponseStatus.Success, "Successful");
+      responseDTO.setBody(landDetailsDTO);
+      return  new ResponseEntity<ResponseDTO<LandDetailsDTO>>(responseDTO, HttpStatus.OK);
     }
     String message="The field  "+ addLandDTO.getSize()== null? "size": addLandDTO.getTitle()==null ? "title": addLandDTO.getPriceInSqm()==null?"priceInSqm": "neigborhood";
-    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    return  new ResponseEntity<ResponseDTO<LandDetailsDTO>>(new ResponseDTO<LandDetailsDTO>(ResponseStatus.Error, message), HttpStatus.BAD_REQUEST);
   }
 
 
@@ -99,12 +116,12 @@ public class LandController {
 
   @CrossOrigin(allowedHeaders = {"Authorization", "Content-Type"})
   @PostMapping("/image/{id}")
-  public ResponseEntity<ImageDTO> uploadLandImage(@RequestParam("file") MultipartFile file, @PathVariable Long id){
+  public ResponseEntity<ResponseDTO<ImageDTO>> uploadLandImage(@RequestParam("file") MultipartFile file, @PathVariable Long id){
    //get the specified land
     try{
       Land land= landService.getLand(id);
     }catch (NoSuchElementException e){
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+      return new ResponseEntity<ResponseDTO<ImageDTO>>(new ResponseDTO(ResponseStatus.Error,e.getMessage() ), HttpStatus.NOT_FOUND);
     }
 
     log.info("LandController:uploadImage:  land found with id "+id);
@@ -112,15 +129,18 @@ public class LandController {
 
     try{
       if(file.isEmpty()){
-         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File cannot be empty");
+        return new ResponseEntity<ResponseDTO<ImageDTO>>(new ResponseDTO(ResponseStatus.Error,"File cannot be empty" ), HttpStatus.BAD_REQUEST);
       }
 
       String url=fileSystemStorageService.store(file, "land"+id+".jpg", "land");
       log.info("FileSystemStorageService:store: image uploaded successfully");
-       return ResponseEntity.ok(new ImageDTO(url));
+
+      ResponseDTO<ImageDTO> responseDTO= new ResponseDTO<>(ResponseStatus.Success, "Successful");
+      responseDTO.setBody(new ImageDTO(url));
+       return new ResponseEntity<ResponseDTO<ImageDTO>>(responseDTO, HttpStatus.OK);
     }catch (Exception e){
       log.warn("LandController:uploadImage:  error uploading image "+e.getMessage());
-      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
+      return new ResponseEntity<ResponseDTO<ImageDTO>>(new ResponseDTO(ResponseStatus.Error,"file could not be stored" ), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
   }
@@ -129,40 +149,48 @@ public class LandController {
 
   @CrossOrigin( allowedHeaders = {"Authorization", "Content-Type"}, methods = {RequestMethod.PUT})
   @PutMapping("/{id}")
-  public ResponseEntity<LandDetailsDTO> updateLand(@PathVariable Long id, @RequestBody UpdateLandDTO updateLandDTO) {
+  public ResponseEntity<ResponseDTO<LandDetailsDTO>> updateLand(@PathVariable Long id, @RequestBody UpdateLandDTO updateLandDTO) {
     try{
        Land land= landService.getLand(id);
        BeanUtils.copyProperties(updateLandDTO, land, CopyUtils.getNullPropertyNames(updateLandDTO));
        landService.addLand(land);
-      return new ResponseEntity<LandDetailsDTO>(DTOUtility.convertLandToLandDetailsDTO(land), HttpStatus.OK);
+       ResponseDTO responseDTO= new ResponseDTO(ResponseStatus.Success, "Successful");
+       responseDTO.setBody(DTOUtility.convertLandToLandDetailsDTO(land));
+      return new ResponseEntity<ResponseDTO<LandDetailsDTO>>(responseDTO, HttpStatus.OK);
     }catch (NoSuchElementException e){
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Land with id "+id+" not found");
+      return  new ResponseEntity<ResponseDTO<LandDetailsDTO>>(new ResponseDTO<>(ResponseStatus.Success,"Land with id "+id+" not found" ), HttpStatus.NOT_FOUND);
     }
   }
 
 
+
   @CrossOrigin( allowedHeaders = {"Authorization"})
   @GetMapping
-  public ResponseEntity<List<LandDetailsDTO>> getAllLand(){
+  public ResponseEntity<ResponseDTO<List<LandDetailsDTO>>> getAllLand(){
         List<Land> lands= landService.getAllLand();
         List<LandDetailsDTO> landDetailsDTOS= new ArrayList<>();
         lands.forEach(land ->{
           landDetailsDTOS.add(DTOUtility.convertLandToLandDetailsDTO(land));
         } );
-        return new  ResponseEntity<List<LandDetailsDTO> >(landDetailsDTOS, HttpStatus.OK);
+        ResponseDTO responseDTO= new ResponseDTO<>(ResponseStatus.Success, "Successful");
+        responseDTO.setBody(landDetailsDTOS);
+        return new  ResponseEntity<ResponseDTO<List<LandDetailsDTO>>>(responseDTO, HttpStatus.OK);
   }
 
 
   @CrossOrigin( allowedHeaders = {"Authorization"})
   @GetMapping("/{id}")
-  public ResponseEntity<LandDetailsDTO> getLand(@PathVariable Long id){
+  public ResponseEntity<ResponseDTO<LandDetailsDTO>> getLand(@PathVariable Long id){
     // get the land by id
     try{
        Land land= landService.getLand(id);
-       return new ResponseEntity<LandDetailsDTO>(DTOUtility.convertLandToLandDetailsDTO(land), HttpStatus.OK);
+       ResponseDTO responseDTO= new ResponseDTO(ResponseStatus.Success, "Successful");
+       responseDTO.setBody(DTOUtility.convertLandToLandDetailsDTO(land));
+       return new ResponseEntity<ResponseDTO<LandDetailsDTO>>(responseDTO, HttpStatus.OK);
     }catch (Exception e){
       log.info("LandController:getLand : The requested resource was not found" );
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "The requested resource was not found");
+      return new ResponseEntity<ResponseDTO<LandDetailsDTO>>(new ResponseDTO(ResponseStatus.Error,"The requested resource was not found" ), HttpStatus.NOT_FOUND);
+
     }
   }
 
@@ -172,31 +200,26 @@ public class LandController {
    * @param id
    * @param landPurchaseDTO
    * @return ResponseEntity<InvestorLandResponseDTO>
-   *
    *  This endpoint is temporary and need upgrade in other to prevent a user, from using a token to access another person's data
-   *
    */
 
 
   @CrossOrigin(allowedHeaders = {"Authorization", "Content-Type"} ,methods = {RequestMethod.POST})
   @PostMapping("/checkout/{id}")
-  public ResponseEntity<ResponseDTO<InvestorLandResponseDTO>> purchaseLand(@PathVariable Long id,@RequestBody LandPurchaseDTO landPurchaseDTO){
+  public ResponseEntity<ResponseDTO<InvestorLandResponseDTO>> purchaseLand(@PathVariable Long id,@RequestBody LandPurchaseDTO landPurchaseDTO, @RequestHeader("Authorization") String jwtToken){
+
     /**
      * Request is invalid if paymentPlan and paymentPlanId is specified together
      * Request is invalid if email or userId field is null
      *
      *  Amount  and charge should not be specified in the paymentPlan
-     *
-     *
-     *  protect the endpoint to allow only instance of Investors to purchase land
-     *
-     *
-     *
      */
+
     Land land=null;
     User user=null;
 
     Double amountCalculated= null;
+
     try{
       //validate if fields are valid
       isLandPurchaseFieldsValid(landPurchaseDTO, LandStatus.CheckOut);
@@ -219,25 +242,47 @@ public class LandController {
         user= userService.getUserByEmail(landPurchaseDTO.getEmail());
       }
 
+      if(user.getInvestor()== null) return  new ResponseEntity<ResponseDTO<InvestorLandResponseDTO>>(new ResponseDTO<InvestorLandResponseDTO>(ResponseStatus.Error, "Account is not an Investor's account"), HttpStatus.BAD_REQUEST);
+
+      //verify the provided user's is same
+     /* JwtDetails details= jwtService.getTokenDetails(jwtToken);
+
+      if(!details.getUsername().equals(user.getEmail()))  return new ResponseEntity<>(new  ResponseDTO<InvestorLandResponseDTO>(ResponseStatus.Error, "invalid token"), HttpStatus.UNAUTHORIZED);
+      */
+
+
       if(!user.getEnabled()) return  new ResponseEntity<ResponseDTO<InvestorLandResponseDTO>>((new ResponseDTO<InvestorLandResponseDTO>(ResponseStatus.Error,"Email verification is required" )), HttpStatus.NOT_ACCEPTABLE);
 
       //check if user profile has been set
       if(user.getFirstName()== null || user.getLastName()== null || user.getInvestor().getNextOfKinName() == null ){
-        return new ResponseEntity<>(new  ResponseDTO<InvestorLandResponseDTO>(ResponseStatus.Error, "Billing profile is required"), HttpStatus.NOT_ACCEPTABLE);
+        return new ResponseEntity<>(new  ResponseDTO<InvestorLandResponseDTO>(ResponseStatus.Error, 34,"Billing profile is required"), HttpStatus.NOT_ACCEPTABLE);
       }
+
+      Boolean doesUserHaveLand=false;
+
+      //check if the investor has this land in his list
+      for (InvestorLand investorLand : user.getInvestor().getInvestorLands()) {
+        if(investorLand.getLand().equals(land)  && (investorLand.getLandStatus().equals(LandStatus.Initiated) || investorLand.getLandStatus().equals(LandStatus.Acquired) || investorLand.getLandStatus().equals(LandStatus.Withheld) )){
+           doesUserHaveLand= true;
+        }
+      }
+
+      if(doesUserHaveLand)return new ResponseEntity<>(new ResponseDTO<>(ResponseStatus.Error, "Land purchase already initiated by user"), HttpStatus.NOT_ACCEPTABLE);
 
     }catch(NoSuchElementException e){
       log.info("LandController:purchaseLand : "+e.getMessage());
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+      return new ResponseEntity<ResponseDTO<InvestorLandResponseDTO>>(new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_FOUND);
     }catch (NotNullFieldException e){
-      throw  new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+      return new ResponseEntity<ResponseDTO<InvestorLandResponseDTO>>(new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.BAD_REQUEST);
+
     }catch ( InvalidPropertiesFormatException e){
-      throw  new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+      return new ResponseEntity<ResponseDTO<InvestorLandResponseDTO>>(new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.BAD_REQUEST);
+
     }catch( ResponseStatusException e){
-      throw new ResponseStatusException(e.getStatusCode(), e.getMessage());
+      return new ResponseEntity<ResponseDTO<InvestorLandResponseDTO>>(new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_ACCEPTABLE);
     }catch (CalculatorConfigException e){
       log.error("LandController:purchaseLand: error:  "+e.getMessage());
-      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "something wrong happend");
+      return new ResponseEntity<ResponseDTO<InvestorLandResponseDTO>>(new ResponseDTO<>(ResponseStatus.Error, "something went wrong with configuration"), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     /*try{
@@ -256,9 +301,6 @@ public class LandController {
 
       //get land
      try{
-
-
-
        InvestorLand wishLand= null;
        /**
         *   check if the user has the specified land in his wishlist
@@ -292,9 +334,6 @@ public class LandController {
            }
          }
        }
-
-
-
 
 
 
@@ -377,8 +416,6 @@ public class LandController {
 
 
 
-
-
       //check for payment plan
        if(isLandUpdateOperation){
 
@@ -407,7 +444,6 @@ public class LandController {
              investorLand.addInvestorLandPaymentPlan(investorLandPaymentPlan);
 
              /**
-              *
               * Validate the payment plan
               */
 
@@ -463,9 +499,11 @@ public class LandController {
        if(isPlanManaged){
          log.info("land size dur plan managed = "+planManaged.getSizeInSqm() );
          investorLand.setSize(planManaged.getSizeInSqm());
+         investorLand.setAmount(planManaged.getAmount());
        }else{
          log.info("land size due un managed = "+plan.getSizeInSqm());
          investorLand.setSize(plan.getSizeInSqm());
+         investorLand.setAmount(plan.getAmount());
        }
 
 
@@ -516,7 +554,7 @@ public class LandController {
 
   @CrossOrigin( allowedHeaders = {"Authorization"})
   @GetMapping("/checkout/{purchaseId}/{paymentPlanId}")
-  public ResponseEntity<ResponseDTO<CheckOutResponseDTO>> getCheckOutDetails(@PathVariable Long purchaseId, @PathVariable Long paymentPlanId){
+  public ResponseEntity<ResponseDTO<CheckOutResponseDTO>> getCheckOutDetails(@PathVariable Long purchaseId, @PathVariable Long paymentPlanId, @RequestHeader("Authorization") String jwtToken){
 
     try{
       //get the user's purchase id
@@ -546,6 +584,12 @@ public class LandController {
 
       //get investor's details
       User user= investorLand.getInvestor().getUser();
+
+
+      //verify the provided user's is same
+     /* JwtDetails details= jwtService.getTokenDetails(jwtToken);
+      if(!details.getUsername().equals(user.getEmail()))  return new ResponseEntity<>(new  ResponseDTO<CheckOutResponseDTO>(ResponseStatus.Error, "invalid token"), HttpStatus.UNAUTHORIZED);
+ */
 
       //check if user profile has been set
       if(user.getFirstName()== null || user.getLastName()== null || investorLand.getInvestor().getNextOfKinName() == null ){
@@ -578,10 +622,100 @@ public class LandController {
       return new ResponseEntity<>(new  ResponseDTO<CheckOutResponseDTO>(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_FOUND);
     }
 
-
   }
 
 
+  @CrossOrigin(allowedHeaders = {"Authorization", "Content-Type"} ,methods = {RequestMethod.POST})
+ @PostMapping("/confirm-order")
+  public  ResponseEntity<ResponseDTO<InitTransactionResponseDTO>>   confirmPurchase(@RequestBody  InitTransactionRequestDTO initTransactionRequestDTO){
+
+    //very required fields are not empty
+    if(initTransactionRequestDTO.getPurchaseId()== null) return  new ResponseEntity<>((new  ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "purchaseId cannot be empty")), HttpStatus.BAD_REQUEST);
+
+    if(initTransactionRequestDTO.getPaymentMethod() == null) return  new ResponseEntity<>((new  ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "purchaseId cannot be empty")), HttpStatus.BAD_REQUEST);
+
+    if(initTransactionRequestDTO.getPaymentPlanId()== null) return  new ResponseEntity<>((new  ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "paymentPlanId cannot be empty")), HttpStatus.BAD_REQUEST);
+
+    //get the investorLand
+    try {
+      //verify if user's credentials has been uploaded
+
+      //get the investorLand
+      InvestorLand investorLand = investorLandService.getInvestorLand(initTransactionRequestDTO.getPurchaseId());
+
+      //verify the status of this investor's Land
+      if (investorLand.getLandStatus() != LandStatus.CheckOut)
+        return new ResponseEntity<>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "land can not be found in checkout list"), HttpStatus.NOT_FOUND);
+      //get investor's details
+      User user = investorLand.getInvestor().getUser();
+
+
+          /*  JwtDetails details =jwtService.getTokenDetails(token);
+
+            if(details.getIsAdmin()){
+                //this is an admin
+            } else {
+                //investors should access only their resources
+                if(!user.getEmail().equals(details.getUsername()))  return  new ResponseEntity<ResponseDTO<InitTransactionResponseDTO>>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "invalid access token"), HttpStatus.UNAUTHORIZED);
+            } */
+
+      //check if user's credentials and passport photograph has been uploaded
+      if (user.getInvestor().getIdCardUrl() == null)
+        return new ResponseEntity<>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "upload a valid identification credential"), HttpStatus.NOT_ACCEPTABLE);
+
+      //check if user's credentials and passport photograph has been uploaded
+      if (user.getInvestor().getPassportUrl() == null)
+        return new ResponseEntity<>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "upload a recent passport photograph"), HttpStatus.NOT_ACCEPTABLE);
+
+      //check if user profile has been set
+      if (user.getFirstName() == null || user.getLastName() == null || investorLand.getInvestor().getNextOfKinName() == null) {
+        return new ResponseEntity<>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "user's profile not complete"), HttpStatus.NOT_ACCEPTABLE);
+      }
+
+      if (!user.getEnabled())
+        return new ResponseEntity<>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "user's  email not verified"), HttpStatus.NOT_ACCEPTABLE);
+
+      List<InvestorLandPaymentPlan> landPaymentPlanArrayList = investorLand.getInvestorLandPaymentPlan();
+
+      PaymentPlan paymentPlan = landPaymentPlanService.getPaymentPlanById(initTransactionRequestDTO.getPaymentPlanId());
+
+      Boolean paymentPlanSearch = false;
+
+      //check if land is found
+      for (InvestorLandPaymentPlan investorLandPaymentPlan : landPaymentPlanArrayList) {
+        if (investorLandPaymentPlan.getPaymentPlan().equals(paymentPlan)) {
+          paymentPlanSearch = true;
+        }
+      }
+
+      if (!paymentPlanSearch)
+        return new ResponseEntity<>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "payment plan not found"), HttpStatus.NOT_FOUND);
+
+      //check if the investorLand exist in checkout list
+
+      //update the investors land
+      investorLand.setLandStatus(LandStatus.Initiated);
+      investorLand.setBillingType(BillingType.Account);
+
+      //update the investor land
+      investorLand=investorLandService.addInvestorLand(investorLand);
+
+      InitTransactionResponseDTO initTransactionResponseDTO= new InitTransactionResponseDTO();
+      initTransactionResponseDTO.setPaymentId(investorLand.getId());
+      initTransactionResponseDTO.setPaymentMethod(investorLand.getBillingType());
+
+      ResponseDTO<InitTransactionResponseDTO> responseDTO = new ResponseDTO<>(ResponseStatus.Success, "Order created successfully");
+      responseDTO.setBody(initTransactionResponseDTO);
+
+      return new ResponseEntity<ResponseDTO<InitTransactionResponseDTO>>(responseDTO, HttpStatus.OK);
+
+
+    }catch (NoSuchElementException e){
+      log.error("MonnifyController: init:NoSuchElementException: "+e.getMessage());
+      return new ResponseEntity<>(new  ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_FOUND);
+    }
+
+  }
 
 
 

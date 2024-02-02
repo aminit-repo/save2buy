@@ -15,4 +15,6 @@ public class SignUpDTO {
     private String firstName;
     private String lastName;
     private String primaryLine;
+
+    private String code;
 }

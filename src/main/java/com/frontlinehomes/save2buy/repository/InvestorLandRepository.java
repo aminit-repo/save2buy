@@ -6,6 +6,7 @@ import com.frontlinehomes.save2buy.data.land.data.LandStatus;
 import com.frontlinehomes.save2buy.data.users.investor.data.Investor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.*;
 
 @Repository
 public interface InvestorLandRepository extends JpaRepository<InvestorLand,Long> {
@@ -13,4 +14,7 @@ public interface InvestorLandRepository extends JpaRepository<InvestorLand,Long>
 
     public InvestorLand findByInvestorAndLand(Investor investor, Land land);
 
+    public List<InvestorLand> findAllByLandStatus(LandStatus landStatus);
+
+    public List<InvestorLand> findAllByIdAndLandStatus(Long id, LandStatus landStatus);
 }

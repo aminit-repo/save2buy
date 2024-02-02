@@ -50,7 +50,7 @@ public class RegistrationListener implements
                 = event.getAppUrl()  + token;
 
         //user.getEmail()
-        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,user.getEmail() ,"no-reply@save2buy.ng","Save2buy Email Verification", "no-reply <no-reply@save2buy.ng>","email-verification");
+        VerifyEmail verifyEmail= new VerifyEmail(confirmationUrl,user.getEmail() ,"no-reply@save2buy.ng","Save2buy Email VerificationController", "no-reply <no-reply@save2buy.ng>",event.getTemplate());
         verifyEmail.setName(user.getFirstName()!=null? user.getFirstName(): " ");
         try{
             elasticMailClient.sendTransactionEmail(verifyEmail);

@@ -14,11 +14,13 @@ public class OnRegistrationCompleteEvent extends ApplicationEvent {
     private String appUrl;
 
     private User user;
+    private String template;
 
-    public OnRegistrationCompleteEvent(User user, String appUrl) {
+    public OnRegistrationCompleteEvent(User user, String appUrl, String template) {
         super(user);
         this.user = user;
         this.appUrl=appUrl;
+        this.template= template;
     }
 
     // standard getters and setters

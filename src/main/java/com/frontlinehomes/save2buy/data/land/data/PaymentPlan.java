@@ -27,10 +27,8 @@ public class PaymentPlan implements Serializable {
     private String name;
     //total size to be purchased
     private Double SizeInSqm;
-
     //Amount is the total amount of land for the specified size
     private Double amount;
-
     //duration of payment
 
     @ManyToOne

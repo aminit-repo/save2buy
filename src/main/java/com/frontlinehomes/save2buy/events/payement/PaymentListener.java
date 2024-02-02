@@ -28,7 +28,7 @@ public class PaymentListener implements ApplicationListener<OnPaymentCompleteEve
                 "payment-confirmation");
         try{
             elasticMailClient.sendTransactionEmail(receiptEmail);
-            log.info("RegistrationListener:confirmRegistration email sent successfully to "+event.getInvestorLand().getInvestor().getUser().getEmail());
+            log.info("PaymentListener:paymentCompletion email sent successfully to "+event.getInvestorLand().getInvestor().getUser().getEmail());
         }catch (Exception e){
             log.error("RegistrationListener:confirmRegistration "+e.getMessage());
         }

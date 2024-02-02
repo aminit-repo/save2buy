@@ -15,6 +15,7 @@ import com.frontlinehomes.save2buy.service.land.LandService;
 import com.frontlinehomes.save2buy.service.landPaymentPlan.LandPaymentPlanService;
 import com.frontlinehomes.save2buy.service.paymentUtil.PaymentUtilService;
 import com.frontlinehomes.save2buy.service.utils.DTOUtility;
+import okhttp3.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.BeanUtils;
@@ -56,10 +57,10 @@ public class LandPaymentPlanController {
 
     @CrossOrigin( allowedHeaders = {"Authorization", "Content-Type"}, methods = {RequestMethod.POST})
     @PostMapping("/create/land/{id}")
-    public ResponseEntity<PaymentPlanResponseDTO> createLandPaymentPlan(@RequestBody PaymentPlanDTO paymentPlanDTO, @PathVariable Long id){
+    public ResponseEntity<ResponseDTO<PaymentPlanResponseDTO>> createLandPaymentPlan(@RequestBody PaymentPlanDTO paymentPlanDTO, @PathVariable Long id){
         try{
 
-            if(paymentPlanDTO.getDurationLength()==  null ) throw new NotNullFieldException("missing required field durationLength ");
+            if(paymentPlanDTO.getDurationLength()==  null ) throw new NotNullFieldException("missing required field durationLength");
 
             if(paymentPlanDTO.getDurationType()== null) throw new NotNullFieldException("missing required field durationType ");
 
@@ -105,17 +106,29 @@ public class LandPaymentPlanController {
                 //check if the payment plan already exist for the specified land
                 landPaymentPlanSet.forEach(landPaymentPlan1 -> {
                     if(landPaymentPlan1.getPaymentPlan().equals(paymentPlanClone)){
-                        throw new EntityDuplicationException("MonnifyController Plan Already Exist");
+                        throw new EntityDuplicationException("Payment Plan Already Exist");
                     }
                 });
 
+                //check if payment plan already exist
+                PaymentPlan paymentPlanManaged= landPaymentPlanService.getPlanByAmountAndFrequencyAndDurationAndCharges(paymentPlanClone.getAmount(),paymentPlanClone.getFrequency(), paymentPlanClone.getDuration(), paymentPlanClone.getCharges());
 
-                //create a new duration if it does not exist, else merge.
-                 Duration durationManaged=paymentUtilService.addDuration(durationNew);
+                if(paymentPlanManaged == null){
 
 
-                //save the paymentPlan
-                PaymentPlan paymentPlanManaged= landPaymentPlanService.savePaymentPlan(paymentPlan);
+
+                    //save the paymentPlan
+                    paymentPlanManaged= landPaymentPlanService.savePaymentPlan(paymentPlan);
+                }
+
+                Duration durationManaged= null;
+
+                if(durationFound){
+                    durationManaged= durationNew;
+                }else{
+                    durationManaged=paymentUtilService.addDuration(durationNew);
+                }
+
 
                 durationManaged.addPaymentPlan(paymentPlanManaged);
 
@@ -128,20 +141,22 @@ public class LandPaymentPlanController {
 
                 //persist the landPayment Plan
                 LandPaymentPlan landPaymentPlanManaged= landPaymentPlanService.saveLandPaymentPlan(landPaymentPlan);
+                ResponseDTO responseDTO= new ResponseDTO(ResponseStatus.Success, "Successful");
+                responseDTO.setBody(DTOUtility.convertPaymentPlanToResponseDTO(paymentPlanManaged));
 
-
-                return  new ResponseEntity<PaymentPlanResponseDTO>(DTOUtility.convertPaymentPlanToResponseDTO(paymentPlanManaged),HttpStatus.OK);
+                return  new ResponseEntity< ResponseDTO<PaymentPlanResponseDTO>>(responseDTO,HttpStatus.OK);
 
             }else{
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Land cannot be found");
+                return new ResponseEntity<ResponseDTO<PaymentPlanResponseDTO>>(new ResponseDTO<PaymentPlanResponseDTO>(ResponseStatus.Error, "Land not found"), HttpStatus.NOT_FOUND);
             }
         }catch (EntityDuplicationException e){
             log.info("LandPaymentPlanController:createLandPaymentPlan:  "+e.getMessage());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            return new ResponseEntity<ResponseDTO<PaymentPlanResponseDTO>>(new ResponseDTO<PaymentPlanResponseDTO>(ResponseStatus.Error, e.getMessage()), HttpStatus.BAD_REQUEST);
         }catch (NotNullFieldException e){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            return new ResponseEntity<ResponseDTO<PaymentPlanResponseDTO>>(new ResponseDTO<PaymentPlanResponseDTO>(ResponseStatus.Error, e.getMessage()), HttpStatus.BAD_REQUEST);
         }catch (NoSuchElementException e){
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+            return new ResponseEntity<ResponseDTO<PaymentPlanResponseDTO>>(new ResponseDTO<PaymentPlanResponseDTO>(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_FOUND);
+
         }
     }
 
@@ -160,9 +175,11 @@ public class LandPaymentPlanController {
              land.getLandPaymentPlans().forEach(landPaymentPlan -> {
                   paymentPlans.add(DTOUtility.convertPaymentPlanToResponseDTO(landPaymentPlan.getPaymentPlan()));
              });
-             return new ResponseEntity<ArrayList<PaymentPlanResponseDTO>>(paymentPlans,HttpStatus.OK);
+             ResponseDTO responseDTO= new ResponseDTO(ResponseStatus.Success, "Successful");
+             responseDTO.setBody(paymentPlans);
+             return new ResponseEntity<ResponseDTO<ArrayList<PaymentPlanResponseDTO>>>(responseDTO,HttpStatus.OK);
         }catch (Exception e){
-            throw  new ResponseStatusException(HttpStatus.NOT_FOUND, "The requested resource could not be found");
+            return new ResponseEntity<ResponseDTO>(new ResponseDTO(ResponseStatus.Error,e.getMessage()), HttpStatus.NOT_FOUND);
         }
     }
 
@@ -301,6 +318,37 @@ public class LandPaymentPlanController {
 
     }
 
+    @CrossOrigin( allowedHeaders = {"Authorization"})
+    @DeleteMapping("/land/{id}/{planId}")
+    public ResponseEntity<ResponseDTO> removeLandPaymentPlan(@PathVariable Long id, @PathVariable Long planId){
+            try{
+                Land land= landService.getLand(id);
+
+                //get the land paymentPlanId
+                PaymentPlan paymentPlan= landPaymentPlanService.getPaymentPlanById(planId);
+
+                LandPaymentPlan landPaymentPlanManaged= null;
+                for (LandPaymentPlan landPaymentPlan : land.getLandPaymentPlans()) {
+                    if(paymentPlan.equals(landPaymentPlan.getPaymentPlan())){
+                         landPaymentPlanManaged= landPaymentPlan;
+                    }
+                }
+
+                if(landPaymentPlanManaged == null) return  new ResponseEntity<ResponseDTO>(new ResponseDTO(ResponseStatus.Error,"Land does not contain plan"), HttpStatus.NOT_FOUND);
+                paymentPlan.removeLandPaymentPlan(landPaymentPlanManaged);
+                land.removeLandPaymentPlan(landPaymentPlanManaged);
+
+                   //update the land
+                landService.addLand(land);
+
+                //update the paymentPlan
+                landPaymentPlanService.savePaymentPlan(paymentPlan);
+                return new ResponseEntity<ResponseDTO>( new ResponseDTO(ResponseStatus.Success,"successfully deleted"), HttpStatus.OK);
+
+            }catch (NoSuchElementException e){
+                return  new ResponseEntity<ResponseDTO>(new ResponseDTO(ResponseStatus.Error,e.getMessage()), HttpStatus.NOT_FOUND);
+            }
+    }
 
 
 

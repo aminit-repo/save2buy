@@ -18,5 +18,4 @@ public class InitTransactionRequestDTO {
 
     private Long paymentPlanId;
 
-
 }

@@ -92,7 +92,7 @@ public class Land implements Serializable {
 
     public void removeLandPaymentPlan(LandPaymentPlan landPaymentPlan){
         this.landPaymentPlans.remove(landPaymentPlan);
-        landPaymentPlan.setLand(this);
+        landPaymentPlan.setLand(null);
     }
 
 

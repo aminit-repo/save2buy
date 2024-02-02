@@ -31,7 +31,12 @@ public class InvestorLand implements Serializable {
     private Investor investor;
 
     private Double size;
+
     private Double amount;
+
+    private String longitude;
+    private String latitude;
+    private Integer milestone;
     @Enumerated(EnumType.STRING)
     private LandStatus landStatus;
 
@@ -40,7 +45,6 @@ public class InvestorLand implements Serializable {
 
     @CurrentTimestamp
     private Timestamp creationDate;
-
 
 
     @OneToMany(mappedBy = "investorLand", cascade = {CascadeType.ALL})

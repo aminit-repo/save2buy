@@ -17,6 +17,9 @@ public class AddLandDTO {
     private String subTitle;
     @NonNull
     private Double priceInSqm;
+    private Boolean isArchived;
+
+    private Boolean isSoldOut;
     private Double availableSize;
     private String img1Url;
     private String img2Url;

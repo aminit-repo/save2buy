@@ -1,5 +1,6 @@
 package com.frontlinehomes.save2buy.config;
 
+import com.frontlinehomes.save2buy.data.users.admin.Scopes;
 import com.frontlinehomes.save2buy.service.DefaultAuthenticationProvider;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.Customizer;
@@ -49,8 +51,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeHttpRequests((authorize) -> authorize.requestMatchers("/images/**","user/login","/registrationConfirm/**", "/investor/create").permitAll()
-                        .requestMatchers("/land/create").access(hasScope("create-land")).requestMatchers("/admin/create").access(hasScope("create-admin")).anyRequest().authenticated()
+                .authorizeHttpRequests((authorize) -> authorize.requestMatchers("/images/**","user/login","/registrationConfirm/**", "/investor/create", "/init", "/css/**", "/js/**").permitAll()
+                        .requestMatchers("/land/create", "/land/image/{id}","/payment-plan/create/land/{id}", "/payment-plan/duration/create", "/payment-plan/configuration/create" ).access(hasScope(Scopes.create_land.toString()))
+                        .requestMatchers("/administrator/create").access(hasScope(Scopes.create_admin.toString()))
+                        .requestMatchers(HttpMethod.GET,"/investor").access(hasScope(Scopes.list_investors.toString()))
+                        .requestMatchers(HttpMethod.PUT, "/land/{id}").access(hasScope(Scopes.update_land.toString()))
+                        .requestMatchers("/account/transactions/{id}", "/account/initiated-transactions/{id}").access(hasScope(Scopes.read_transaction.toString()))
+                        .requestMatchers(HttpMethod.PUT,"/investor/{id}").access(hasScope(Scopes.update_investor.toString()))
+                        .requestMatchers("/investor/passport/{id}", "/investor/identification/{id}").access(hasScope(Scopes.update_investor.toString()))
+                        .requestMatchers(HttpMethod.GET,"/investor/**", "/investor/status/**").access(hasScope(Scopes.read_investor.toString()))
+                        .anyRequest().authenticated()
                 ).csrf(httpSecurityCsrfConfigurer -> {httpSecurityCsrfConfigurer.disable(); })
                 .sessionManagement(session-> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2ResourceServer((oauth2) -> oauth2
@@ -78,11 +88,6 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager() throws Exception {
         return  new ProviderManager(authenticationProvider);
     }
-
-
-
-
-
 
 
 }

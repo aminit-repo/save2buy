@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,9 +26,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
+/**
+ *
+ * Custom Errors originated from UserController starts with the code 1XX
+ */
 @RestController
 @RequestMapping("/user")
 public class UserController {
+
     @Autowired
     private UserService userService;
     private static Logger log = LogManager.getLogger( UserController.class);
@@ -38,22 +44,32 @@ public class UserController {
     @Autowired
     private JWTService jwtService;
 
-    @CrossOrigin
+    @CrossOrigin(allowedHeaders = {"Authorization", "Content-Type"})
     @PostMapping("/login")
-    public ResponseEntity<ResponseDTO<String>> signin(@RequestBody LoginDTO loginDTO){
+    public ResponseEntity<ResponseDTO<LoginResponseDTO>> signin(@RequestBody LoginDTO loginDTO){
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO
                     .getPassword()));
             //get the specified user details
-            ResponseDTO<String> responseDTO= new ResponseDTO<>(ResponseStatus.Success, "Successful");
-            responseDTO.setBody(jwtService.getJWTString(authentication));
-            return new ResponseEntity<ResponseDTO<String>>(responseDTO, HttpStatus.OK);
+            ResponseDTO<LoginResponseDTO> responseDTO= new ResponseDTO<>(ResponseStatus.Success, "Successful");
+            LoginResponseDTO loginResponseDTO= new LoginResponseDTO();
+            loginResponseDTO.setToken(jwtService.getJWTString(authentication));
+
+            //get the user's details
+            User user= userService.getUserByEmail(loginDTO.getEmail());
+            loginResponseDTO.setId(user.getId());
+            responseDTO.setBody(loginResponseDTO);
+
+            return new ResponseEntity<ResponseDTO<LoginResponseDTO>>(responseDTO, HttpStatus.OK);
         }catch (BadCredentialsException e){
-            return new ResponseEntity<ResponseDTO<String>>( new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.FORBIDDEN);
+            return new ResponseEntity<ResponseDTO<LoginResponseDTO>>( new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.FORBIDDEN);
         }catch (UsernameNotFoundException e){
-            return new ResponseEntity<ResponseDTO<String>>( new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_FOUND);
+            return new ResponseEntity<ResponseDTO<LoginResponseDTO>>( new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.NOT_FOUND);
+        }catch (DisabledException e){
+            return new ResponseEntity<ResponseDTO<LoginResponseDTO>>( new ResponseDTO<>(ResponseStatus.Error, e.getMessage()), HttpStatus.FORBIDDEN);
         }
     }
+
 
    /* @CrossOrigin( allowedHeaders = {"Authorization"})
     @GetMapping("/{id}")

@@ -6,5 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class TransactionRequest {
-    private Long id;
+    private Long userId;
+
+    private String email;
 }

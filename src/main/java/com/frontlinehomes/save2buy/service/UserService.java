@@ -25,9 +25,6 @@ public class UserService {
             throw new NotNullFieldException("Email field cannot be empty");
         }
 
-        if(user.getPassword()==null){
-            throw new NotNullFieldException("Password field cannot be empty");
-        }
         try{
             return  (User) userRepository.save(user);
         }catch (Exception e){
@@ -37,9 +34,9 @@ public class UserService {
 
     public User getUser(Long id){
         try{
-            Optional<User> user= userRepository.findById(id);
-            if(user.isEmpty()) throw new NoSuchElementException("user cannot be found");
-            return  user.get();
+             User user= userRepository.findById(id).get();
+            if(user== null) throw new NoSuchElementException("user cannot be found");
+            return  user;
         }catch (NoSuchElementException e){
             throw new NoSuchElementException("user cannot be found");
         }
@@ -53,7 +50,9 @@ public class UserService {
 
     public User getUserByEmail(String email){
         try{
-            return  userRepository.findByEmail(email);
+            User user=  userRepository.findByEmail(email);
+            if(user == null) throw new NoSuchElementException("user cannot be found");
+            return user;
         }catch (NoSuchElementException e){
              throw e;
         }

@@ -5,10 +5,7 @@ import com.frontlinehomes.save2buy.client.monnify.*;
 import com.frontlinehomes.save2buy.config.MonnifyProperties;
 import com.frontlinehomes.save2buy.data.ResponseDTO;
 import com.frontlinehomes.save2buy.data.ResponseStatus;
-import com.frontlinehomes.save2buy.data.account.data.BillingType;
-import com.frontlinehomes.save2buy.data.account.data.Channel;
-import com.frontlinehomes.save2buy.data.account.data.Transaction;
-import com.frontlinehomes.save2buy.data.account.data.TransactionStatus;
+import com.frontlinehomes.save2buy.data.account.data.*;
 import com.frontlinehomes.save2buy.data.account.request.ChargeCardOTPVerifyRequestDTO;
 import com.frontlinehomes.save2buy.data.account.request.ChargeCardRequestDTO;
 import com.frontlinehomes.save2buy.data.account.request.InitTransactionRequestDTO;
@@ -19,9 +16,12 @@ import com.frontlinehomes.save2buy.data.land.data.InvestorLandPaymentPlan;
 import com.frontlinehomes.save2buy.data.land.data.LandStatus;
 import com.frontlinehomes.save2buy.data.land.data.PaymentPlan;
 import com.frontlinehomes.save2buy.data.users.User;
+import com.frontlinehomes.save2buy.data.users.investor.response.InvestorResponseDTO;
+import com.frontlinehomes.save2buy.data.verification.JwtDetails;
 import com.frontlinehomes.save2buy.events.payement.OnPaymentCompleteEvent;
 import com.frontlinehomes.save2buy.exception.*;
 import com.frontlinehomes.save2buy.service.CopyUtils;
+import com.frontlinehomes.save2buy.service.JWTService;
 import com.frontlinehomes.save2buy.service.investorLand.InvestorLandService;
 import com.frontlinehomes.save2buy.service.landPaymentPlan.LandPaymentPlanService;
 import com.frontlinehomes.save2buy.service.monnify.MonnifyService;
@@ -41,7 +41,10 @@ import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.List;
 
-
+/**
+ *
+ * Custom Errors originated from MonnifyController starts with the code 5XX
+ */
 @RestController
 @RequestMapping("/pay-with-monfy/")
 public class MonnifyController {
@@ -63,6 +66,8 @@ public class MonnifyController {
     private MonnifyService monnifyService;
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private JWTService jwtService;
 
     private static Logger log = LogManager.getLogger(MonnifyController.class);
 
@@ -73,7 +78,7 @@ public class MonnifyController {
 
     @CrossOrigin(allowedHeaders = {"Authorization", "Content-Type"})
     @PostMapping("/initiate-transaction")
-    public ResponseEntity<ResponseDTO<InitTransactionResponseDTO>> init(@RequestBody InitTransactionRequestDTO initTransactionRequestDTO){
+    public ResponseEntity<ResponseDTO<InitTransactionResponseDTO>> init(@RequestBody InitTransactionRequestDTO initTransactionRequestDTO, @RequestHeader("Authorization") String token){
 
         //verify if this user is allowed to process this request
 
@@ -84,10 +89,11 @@ public class MonnifyController {
 
         if(initTransactionRequestDTO.getPaymentPlanId()== null) return  new ResponseEntity<>((new  ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "paymentPlanId cannot be empty")), HttpStatus.BAD_REQUEST);
 
+
+
         //get the investorLand
         try{
             //verify if user's credentials has been uploaded
-
 
             //get the investorLand
             InvestorLand investorLand= investorLandService.getInvestorLand(initTransactionRequestDTO.getPurchaseId());
@@ -95,9 +101,18 @@ public class MonnifyController {
             //verify the status of this investor's Land
             if(investorLand.getLandStatus()!= LandStatus.CheckOut)
                 return new ResponseEntity<>(new  ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "land can not be found in checkout list"), HttpStatus.NOT_FOUND);
-
             //get investor's details
             User user= investorLand.getInvestor().getUser();
+
+
+          /*  JwtDetails details =jwtService.getTokenDetails(token);
+
+            if(details.getIsAdmin()){
+                //this is an admin
+            } else {
+                //investors should access only their resources
+                if(!user.getEmail().equals(details.getUsername()))  return  new ResponseEntity<ResponseDTO<InitTransactionResponseDTO>>(new ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "invalid access token"), HttpStatus.UNAUTHORIZED);
+            } */
 
             //check if user's credentials and passport photograph has been uploaded
             if(user.getInvestor().getIdCardUrl()== null) return new ResponseEntity<>(new  ResponseDTO<InitTransactionResponseDTO>(ResponseStatus.Error, "upload a valid identification credential"), HttpStatus.NOT_ACCEPTABLE);
@@ -159,17 +174,16 @@ public class MonnifyController {
             investorLand.addTransaction(transaction);
             transaction.setChannel(Channel.Monnify);
             transaction.setAmount(initRequest.getAmount());
+            transaction.setType(TransactionType.Land_Payment);
 
             /**
              *
              * write code initialize the appropriate transactionType
              */
-
+            //get the paymentPlanId.
 
             //persist the transaction value
             transactionService.save(transaction);
-
-
 
             //update the investorLand
             investorLand.setBillingType(initTransactionRequestDTO.getPaymentMethod());
@@ -182,6 +196,7 @@ public class MonnifyController {
             ResponseDTO<InitTransactionResponseDTO> responseDTO= new ResponseDTO<InitTransactionResponseDTO>();
             responseDTO.setStatus(ResponseStatus.Success);
             responseDTO.setBody(initTransactionResponseDTO);
+
             return new ResponseEntity<>(responseDTO, HttpStatus.OK);
 
         }catch (NoSuchElementException e){
@@ -203,7 +218,7 @@ public class MonnifyController {
 
     @CrossOrigin(allowedHeaders = {"Authorization", "Content-Type"})
     @PostMapping("/cards/charge")
-    public ResponseEntity<ResponseDTO<ChargeCardResponseDTO>> chargeCard(@RequestBody ChargeCardRequestDTO cardRequestDTO){
+    public ResponseEntity<ResponseDTO<ChargeCardResponseDTO>> chargeCard(@RequestBody ChargeCardRequestDTO cardRequestDTO,  @RequestHeader("Authorization") String token){
 
         //check for null fields
       String[] nullFileds=  CopyUtils.getNullPropertyNames(cardRequestDTO);
@@ -212,6 +227,16 @@ public class MonnifyController {
       try {
           //get the investorLand
           InvestorLand investorLand= investorLandService.getInvestorLand(cardRequestDTO.getPurchaseId());
+
+          User user= investorLand.getInvestor().getUser();
+          JwtDetails details =jwtService.getTokenDetails(token);
+
+          if(details.getIsAdmin()){
+              //this is an admin
+          } else {
+              //investors should access only their resources
+              if(!user.getEmail().equals(details.getUsername()))  return  new ResponseEntity<ResponseDTO<ChargeCardResponseDTO>>(new ResponseDTO<ChargeCardResponseDTO>(ResponseStatus.Error, "invalid access token"), HttpStatus.UNAUTHORIZED);
+          }
 
           if(investorLand.getLandStatus() != LandStatus.CheckOut) return new ResponseEntity<>(new  ResponseDTO<ChargeCardResponseDTO>(ResponseStatus.Error, "land can not be found in checkout list"), HttpStatus.NOT_ACCEPTABLE);
 
@@ -279,7 +304,45 @@ public class MonnifyController {
 
               //update the investorLand Land Status
               investorLand.setLandStatus(LandStatus.Initiated);
+
+              //calculate the milestone covered.
+
+              if(investorLand.getMilestone()== null){
+                  investorLand.setMilestone(1);
+              }else{
+                  //calculate all the completed transactions on this investorLand
+                  Double paid=0.0;
+
+                  //get all transactions for the investors land
+                  for (Transaction transaction : investorLand.getTransactionList()) {
+                      //check the transaction status if is successfull.
+                      if(transaction.getTransactionStatus().equals(TransactionStatus.Successful)){
+                          paid+= transaction.getAmount();
+                      }
+                  }
+
+
+                  Double percentage= (paid / investorLand.getAmount()) * 100;
+                  if(percentage >= 70 && percentage < 90 ){
+                      investorLand.setMilestone(3);
+                  }
+
+                  if(percentage >= 90 && percentage <=99 ){
+                      investorLand.setMilestone(4);
+                  }
+
+                  if(percentage > 99){
+                      investorLand.setMilestone(5);
+                  }
+              }
+
+
+              investorLand.setMilestone(1);
               investorLandService.addInvestorLand(investorLand);
+
+              transactionManaged.setTransactionStatus(TransactionStatus.Successful);
+              transactionService.save(transactionManaged);
+
 
           }
 
@@ -314,8 +377,10 @@ public class MonnifyController {
     @PostMapping("/cards/charge/otp-verify")
 
     public ResponseEntity<ResponseDTO<ChargeCardResponseDTO>> verifyOTP(ChargeCardOTPVerifyRequestDTO otpVerifyRequestDTO){
+
         try {
             //check for null fields
+
             String[] nullFileds = CopyUtils.getNullPropertyNames(otpVerifyRequestDTO);
             if (nullFileds.length >= 1)
                 return new ResponseEntity<>((new ResponseDTO<ChargeCardResponseDTO>(ResponseStatus.Error, nullFileds[0] + " cannot be empty")), HttpStatus.BAD_REQUEST);

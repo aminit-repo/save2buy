@@ -1,21 +1,25 @@
 package com.frontlinehomes.save2buy.service.utils;
 
+import com.fasterxml.jackson.databind.util.BeanUtil;
+import com.frontlinehomes.save2buy.data.account.data.Transaction;
+import com.frontlinehomes.save2buy.data.account.response.CreateTransactionResponseDTO;
+import com.frontlinehomes.save2buy.data.account.response.TransactionResponseDTO;
 import com.frontlinehomes.save2buy.data.land.data.*;
 import com.frontlinehomes.save2buy.data.land.request.*;
-import com.frontlinehomes.save2buy.data.land.response.DurationResponseDTO;
-import com.frontlinehomes.save2buy.data.land.response.InvestorLandResponseDTO;
-import com.frontlinehomes.save2buy.data.land.response.PaymentPlanResponseDTO;
+import com.frontlinehomes.save2buy.data.land.response.*;
 import com.frontlinehomes.save2buy.data.users.Phone;
 import com.frontlinehomes.save2buy.data.users.User;
+import com.frontlinehomes.save2buy.data.users.admin.Admin;
+import com.frontlinehomes.save2buy.data.users.admin.response.AdminDetailsDTO;
 import com.frontlinehomes.save2buy.data.users.investor.data.Investor;
 import com.frontlinehomes.save2buy.data.users.investor.request.InvestorDTO;
 import com.frontlinehomes.save2buy.data.users.investor.response.InvestorResponseDTO;
 import com.frontlinehomes.save2buy.data.users.request.SignUpDTO;
 import com.frontlinehomes.save2buy.data.users.request.UserDTO;
 import com.frontlinehomes.save2buy.data.users.response.LoginResponseDTO;
+import com.frontlinehomes.save2buy.data.users.response.SignUpResponseDTO;
 import org.springframework.beans.BeanUtils;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 public class DTOUtility {
@@ -123,10 +127,6 @@ public class DTOUtility {
         BeanUtils.copyProperties(purchasePaymentPlanDTO, paymentPlan);
         return paymentPlan;
     }
-
-
-
-
 
     public static Land convertAddLandDTOtoLand(AddLandDTO addLandDTO){
         Land land=new Land();
@@ -284,6 +284,80 @@ public class DTOUtility {
         BeanUtils.copyProperties(duration, durationResponseDTO);
         return durationResponseDTO;
     }
+
+
+    public static TransactionResponseDTO convertTransactionToTransactionResponseDTO(Transaction transaction){
+        TransactionResponseDTO transactionResponseDTO= new TransactionResponseDTO();
+        BeanUtils.copyProperties(transaction, transactionResponseDTO);
+        return transactionResponseDTO;
+    }
+
+    public static  List<TransactionResponseDTO> convertTransactionToTransactionResponseDTO(List<Transaction> transactionList){
+        List<TransactionResponseDTO> transactionResponseDTOList= new ArrayList<>();
+        for (Transaction transaction : transactionList) {
+            TransactionResponseDTO transactionResponseDTO= new TransactionResponseDTO();
+            BeanUtils.copyProperties(transaction, transactionResponseDTO);
+            if(transaction.getInvestorLand() != null){
+                transactionResponseDTO.setLandTitle(transaction.getInvestorLand().getLand().getTitle());
+            }
+            transactionResponseDTOList.add(transactionResponseDTO);
+        }
+        return transactionResponseDTOList;
+    }
+
+    public static AdminDetailsDTO convertAdminToAdminDetailsDTO(Admin admin){
+        AdminDetailsDTO adminDetailsDTO= new AdminDetailsDTO();
+        BeanUtils.copyProperties(admin.getUser(), adminDetailsDTO);
+        List<String> contacts= new ArrayList<>();
+        //get the phones
+        for (Phone phone : admin.getUser().getPhone()) {
+            contacts.add(phone.getPhone());
+        }
+
+        adminDetailsDTO.setContacts(contacts);
+
+        //set office
+        adminDetailsDTO.setOffice(admin.getOffice());
+        return adminDetailsDTO;
+    }
+
+    public static SignUpResponseDTO convertUserToSignUpResponseDTO(User user){
+        SignUpResponseDTO signUpResponseDTO= new SignUpResponseDTO();
+        BeanUtils.copyProperties(user, signUpResponseDTO);
+        return signUpResponseDTO;
+    }
+
+    public static InvestorLandDetailsDTO convertInvestorLandToInvestorLandDetailsDTO(InvestorLand investorLand){
+        InvestorLandDetailsDTO detailsDTO= new InvestorLandDetailsDTO();
+        PaymentPlan landPaymentPlan=null;
+
+        //get the active paymentPlan
+        for (InvestorLandPaymentPlan investorLandPaymentPlan : investorLand.getInvestorLandPaymentPlan()) {
+            if(investorLandPaymentPlan.getStatus().equals(PaymentPlanStatus.Active)){
+                landPaymentPlan= investorLandPaymentPlan.getPaymentPlan();
+            }
+        }
+        BeanUtils.copyProperties(investorLand, detailsDTO);
+        detailsDTO.setCharges(landPaymentPlan.getCharges());
+        detailsDTO.setDurationLength(landPaymentPlan.getDuration().getLength());
+        detailsDTO.setDurationType(landPaymentPlan.getDuration().getFrequency());
+        detailsDTO.setFrequency(landPaymentPlan.getFrequency());
+        detailsDTO.setInvestorFirstName(investorLand.getInvestor().getUser().getFirstName());
+        detailsDTO.setInvestorLastName(investorLand.getInvestor().getUser().getLastName());
+        detailsDTO.setInvestorOtherName(investorLand.getInvestor().getUser().getOtherName());
+        detailsDTO.setNeigborhood(investorLand.getLand().getNeigborhood());
+        detailsDTO.setTitle(investorLand.getLand().getTitle());
+        return detailsDTO;
+    }
+
+
+    public static CreateTransactionResponseDTO convertTransactionToCreateTransactionResponseDTO(Transaction transaction){
+        CreateTransactionResponseDTO transactionResponseDTO= new CreateTransactionResponseDTO();
+        BeanUtils.copyProperties(transaction, transactionResponseDTO);
+        return transactionResponseDTO;
+    }
+
+
 
 
 }

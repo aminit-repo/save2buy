@@ -10,12 +10,14 @@ import org.hibernate.annotations.CurrentTimestamp;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.Objects;
 
 @Entity
 @NoArgsConstructor
 @Setter
 @Getter
 public class Transaction implements Serializable {
+
     @Id
     @GeneratedValue
     @Setter(AccessLevel.NONE)
@@ -45,12 +47,28 @@ public class Transaction implements Serializable {
 
     private String paymentMethod;
 
+
     @Enumerated(EnumType.STRING)
     private BillingType billingType;
 
     @Enumerated(EnumType.STRING)
     private TransactionStatus transactionStatus;
 
-   /* @Enumerated(EnumType.STRING)
-    private TransactionType type;*/
+    @Enumerated(EnumType.STRING)
+    private TransactionType type;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Transaction that = (Transaction) o;
+        return createdTime.equals(that.createdTime) && amount.equals(that.amount) && refNumber.equals(that.refNumber) && Objects.equals(transactionId, that.transactionId) && type == that.type;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(createdTime, amount, refNumber, transactionId, type);
+    }
+
+
 }

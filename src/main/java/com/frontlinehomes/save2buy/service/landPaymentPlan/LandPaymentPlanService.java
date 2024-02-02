@@ -57,6 +57,21 @@ public class LandPaymentPlanService {
     }
 
 
+    public Boolean isExist(PaymentPlan paymentPlan){
+        try{
+            PaymentPlan plan= paymentPlanRepository.findByAmountAndFrequencyAndDurationAndCharges(paymentPlan.getAmount(), paymentPlan.getFrequency(), paymentPlan.getDuration(), paymentPlan.getCharges());
+            if(plan == null ) return false;
+        }catch (Exception e){
+            return  false;
+        }
+        return true;
+    }
+
+    public PaymentPlan getPlanByAmountAndFrequencyAndDurationAndCharges(Double amount, Frequency frequency, Duration duration, Double charges){
+        return paymentPlanRepository.findByAmountAndFrequencyAndDurationAndCharges(amount, frequency, duration, charges);
+    }
+
+
 
     public PaymentPlan savePaymentPlan(PaymentPlan paymentPlan){
           return  paymentPlanRepository.save(paymentPlan);
